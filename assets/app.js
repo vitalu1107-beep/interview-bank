@@ -10,7 +10,7 @@ const LEGACY_KEYS = ['interview-bank-2026-10-20-v10-nested','interview-bank-2026
 let BASE, TAX, SKILLS, CATS, GROUPS, LOOKUP, items;
 let drafts = {}, progress = {favorites:{},practiced:{}}, loadedDraftRaw = null;
 let canPersist = true, storageMessage = '', legacyItems = [], loadedAt = '';
-let selectedCat='A', selectedGroup='A_C', expandedCat='A', showTags=true, onlyQuestions=false, openSet=new Set();
+let selectedCat='A', selectedGroup='A_C', expandedCat='A', expandedGroup=null, showTags=true, onlyQuestions=false, openSet=new Set();
 let hiddenSet=new Set(), draftView=new Set(), viewFilter='all', pendingImport=null, compareId=null;
 let editorOpen=false, lastModalFocus=null, editorDirty=false, lastSearch='';
 let unreadLocalState={};
@@ -270,6 +270,7 @@ async function boot() {
   GROUPS=Object.fromEntries(TAX.flatMap(c=>c.groups.map(g=>[g.id,{...g,category:c.id}])));
   items=BASE.items;LOOKUP=new Map(items.map(q=>[q.id,q]));
   if(!GROUPS[selectedGroup]) selectedGroup=TAX[0].groups[0]?.id||null;
+  expandedGroup=selectedGroup;
   loadedAt=new Date().toLocaleString('zh-CN',{hour12:false});loadLocalState();bindEvents();render();
   if(location.hash && LOOKUP.has(location.hash.slice(1))) jumpTo(location.hash.slice(1));
 }
@@ -361,8 +362,8 @@ boot().catch(error=>{
 });
 
 function renderNav(){let s='';for(const c of TAX){const opened=expandedCat===c.id;const active=selectedCat===c.id&&!$('#search').value.trim();const count=c.groups.reduce((n,g)=>n+g.ids.length,0);s+=`<button class="nav-cat ${active?'selected':''}" data-cat="${c.id}" aria-expanded="${opened}" aria-label="${c.title}"><span class="cat-code">${c.id}</span><span style="flex:1">${escapeHTML(c.title)}</span><span class="cat-count">${count}题</span><span class="chevron">${opened?'▾':'▸'}</span></button>`;
- if(opened){s+='<div class="nav-group-wrap">';for(const g of c.groups){const ga=selectedGroup===g.id&&!$('#search').value.trim();s+=`<button class="nav-group ${ga?'selected':''}" data-group="${g.id}" aria-pressed="${ga}"><span style="flex:1">${escapeHTML(g.title)}</span><span class="group-count">${g.ids.length}题</span></button>`;
- if(ga){s+='<div class="nav-questions">';for(const id of g.ids){const q=get(id);s+=`<a class="nav-question" href="#${id}" data-goto="${id}"><strong>${id}</strong>${escapeHTML(q.title)}</a>`}s+='</div>'}}
+ if(opened){s+='<div class="nav-group-wrap">';for(const g of c.groups){const ga=selectedGroup===g.id&&!$('#search').value.trim();const groupOpen=ga&&expandedGroup===g.id;s+=`<button class="nav-group ${ga?'selected':''}" data-group="${g.id}" aria-pressed="${ga}" aria-expanded="${groupOpen}"><span style="flex:1">${escapeHTML(g.title)}</span><span class="group-count">${g.ids.length}题</span><span class="chevron" aria-hidden="true">${groupOpen?'▾':'▸'}</span></button>`;
+ if(groupOpen){s+='<div class="nav-questions">';for(const id of g.ids){const q=get(id);s+=`<a class="nav-question" href="#${id}" data-goto="${id}"><strong>${id}</strong>${escapeHTML(q.title)}</a>`}s+='</div>'}}
  s+='</div>'}}
  $('#categoryNav').innerHTML=s;
 }
@@ -370,9 +371,9 @@ function badges(q){let result=q.skills.slice(0,4).map(k=>`<span class="tag ${q.p
 function relatedLinks(q){const keys=q.kind==='main'?q.deepRefs||[]:(q.related||'').split('/').map(x=>x.trim()).filter(Boolean);const existing=keys.filter(id=>get(id));if(!existing.length)return'';return `<div class="related"><span class="related-label">${q.kind==='main'?'关联简历深挖':'关联主问题'}：</span>${existing.map(id=>`<a href="#${id}" class="linkpill" data-goto="${id}">${id}</a>`).join('')}</div>`}
 
 function scrollTop(){window.scrollTo({top:0,behavior:'smooth'})}
-function selectCat(id){if(!CATS[id])return;if(expandedCat===id){expandedCat=null}else{expandedCat=id;selectedCat=id;selectedGroup=null}$('#search').value='';render();scrollTop()}
-function selectGroup(id){const g=GROUPS[id];if(!g)return;selectedCat=g.category;selectedGroup=id;expandedCat=g.category;$('#search').value='';onlyQuestions=false;render();scrollTop()}
-function jumpTo(id){const q=get(id);if(!q)return;selectedCat=catOf(q);selectedGroup=q.navGroup;expandedCat=selectedCat;$('#search').value='';onlyQuestions=false;if(q.kind==='deep')openSet.add(id);hiddenSet.delete(id);render();requestAnimationFrame(()=>document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'}))}
+function selectCat(id){if(!CATS[id])return;if(expandedCat===id){expandedCat=null;expandedGroup=null}else{expandedCat=id;selectedCat=id;selectedGroup=null;expandedGroup=null}$('#search').value='';render();scrollTop()}
+function selectGroup(id){const g=GROUPS[id];if(!g)return;const same=selectedGroup===id;selectedCat=g.category;selectedGroup=id;expandedGroup=same&&expandedGroup===id?null:id;expandedCat=g.category;$('#search').value='';onlyQuestions=false;render();if(!same)scrollTop()}
+function jumpTo(id){const q=get(id);if(!q)return;selectedCat=catOf(q);selectedGroup=q.navGroup;expandedCat=selectedCat;expandedGroup=q.navGroup;$('#search').value='';onlyQuestions=false;if(q.kind==='deep')openSet.add(id);hiddenSet.delete(id);render();requestAnimationFrame(()=>document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'}))}
 function editor(id){const q=drafts[id]?{...get(id),...drafts[id].item,navGroup:LOOKUP.get(id).navGroup}:get(id),host=document.querySelector('#'+CSS.escape(id)+' .edittarget');if(!host)return;if(host.innerHTML){host.innerHTML='';return}
  const skillchecks=Object.entries(SKILLS).map(([k,v])=>`<label><input type="checkbox" name="sk-${k}" ${q.skills.includes(k)?'checked':''}>${escapeHTML(v.short)}</label>`).join('');
  const pri=Object.entries(SKILLS).map(([k,v])=>`<option value="${k}" ${q.primarySkill===k?'selected':''}>${escapeHTML(v.name)}</option>`).join('');
