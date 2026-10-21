@@ -150,7 +150,7 @@
         "K09"
       ],
       "primarySkill": "K07",
-      "navGroup": "A_SALE"
+      "navGroup": "A_PROJECT"
     },
     {
       "id": "A03",
@@ -207,7 +207,7 @@
         "K02"
       ],
       "primarySkill": "K01",
-      "navGroup": "A_C"
+      "navGroup": "A_CONVERSION"
     },
     {
       "id": "A04",
@@ -258,7 +258,7 @@
         "K03"
       ],
       "primarySkill": "K08",
-      "navGroup": "A_B"
+      "navGroup": "A_SYSTEM"
     },
     {
       "id": "A05",
@@ -300,7 +300,7 @@
         "K06"
       ],
       "primarySkill": "K03",
-      "navGroup": "A_B"
+      "navGroup": "A_DECISION"
     },
     {
       "id": "A06",
@@ -336,7 +336,7 @@
         "K08"
       ],
       "primarySkill": "K09",
-      "navGroup": "A_COLLAB"
+      "navGroup": "A_PROJECT"
     },
     {
       "id": "A07",
@@ -371,7 +371,7 @@
         "K03"
       ],
       "primarySkill": "K02",
-      "navGroup": "A_B"
+      "navGroup": "A_SYSTEM"
     },
     {
       "id": "A08",
@@ -409,7 +409,7 @@
         "K02"
       ],
       "primarySkill": "K08",
-      "navGroup": "A_START"
+      "navGroup": "A_DECISION"
     },
     {
       "id": "A09",
@@ -444,7 +444,7 @@
         "K08"
       ],
       "primarySkill": "K02",
-      "navGroup": "A_START"
+      "navGroup": "A_GROWTH"
     },
     {
       "id": "A10",
@@ -489,7 +489,7 @@
         "K06"
       ],
       "primarySkill": "K01",
-      "navGroup": "A_C"
+      "navGroup": "A_GROWTH"
     },
     {
       "id": "A11",
@@ -527,7 +527,7 @@
         "K06"
       ],
       "primarySkill": "K01",
-      "navGroup": "A_C"
+      "navGroup": "A_GROWTH"
     },
     {
       "id": "A12",
@@ -572,7 +572,7 @@
         "K04"
       ],
       "primarySkill": "K01",
-      "navGroup": "A_C"
+      "navGroup": "A_GROWTH"
     },
     {
       "id": "A13",
@@ -614,7 +614,7 @@
         "K09"
       ],
       "primarySkill": "K01",
-      "navGroup": "A_C"
+      "navGroup": "A_GROWTH"
     },
     {
       "id": "A14",
@@ -659,7 +659,7 @@
         "K06"
       ],
       "primarySkill": "K01",
-      "navGroup": "A_C"
+      "navGroup": "A_CONVERSION"
     },
     {
       "id": "B01",
@@ -702,7 +702,7 @@
         "K06"
       ],
       "primarySkill": "K01",
-      "navGroup": "B_C"
+      "navGroup": "B_STRAT"
     },
     {
       "id": "B02",
@@ -737,7 +737,7 @@
         "K05"
       ],
       "primarySkill": "K03",
-      "navGroup": "B_SEG"
+      "navGroup": "B_INSIGHT"
     },
     {
       "id": "B03",
@@ -774,7 +774,7 @@
         "K06"
       ],
       "primarySkill": "K05",
-      "navGroup": "B_SEG"
+      "navGroup": "B_RETENTION"
     },
     {
       "id": "B04",
@@ -810,7 +810,7 @@
         "K02"
       ],
       "primarySkill": "K05",
-      "navGroup": "B_ACT"
+      "navGroup": "B_RETENTION"
     },
     {
       "id": "B05",
@@ -849,7 +849,7 @@
         "K06"
       ],
       "primarySkill": "K01",
-      "navGroup": "B_C"
+      "navGroup": "B_STRAT"
     },
     {
       "id": "B06",
@@ -887,7 +887,7 @@
         "K03"
       ],
       "primarySkill": "K06",
-      "navGroup": "B_DATA"
+      "navGroup": "B_ANALYTICS"
     },
     {
       "id": "B07",
@@ -928,7 +928,7 @@
         "K04"
       ],
       "primarySkill": "K06",
-      "navGroup": "B_DATA"
+      "navGroup": "B_ANALYTICS"
     },
     {
       "id": "B08",
@@ -964,7 +964,7 @@
         "K01"
       ],
       "primarySkill": "K08",
-      "navGroup": "B_C"
+      "navGroup": "B_ECOSYSTEM"
     },
     {
       "id": "B09",
@@ -1039,7 +1039,7 @@
         "K03"
       ],
       "primarySkill": "K02",
-      "navGroup": "B_B"
+      "navGroup": "B_INSIGHT"
     },
     {
       "id": "B11",
@@ -1080,7 +1080,7 @@
         "K07"
       ],
       "primarySkill": "K04",
-      "navGroup": "B_CONV"
+      "navGroup": "B_ANALYTICS"
     },
     {
       "id": "B12",
@@ -1116,7 +1116,7 @@
         "K04"
       ],
       "primarySkill": "K02",
-      "navGroup": "B_B"
+      "navGroup": "B_INSIGHT"
     },
     {
       "id": "B13",
@@ -1149,7 +1149,7 @@
         "K01"
       ],
       "primarySkill": "K05",
-      "navGroup": "B_ACT"
+      "navGroup": "B_RETENTION"
     },
     {
       "id": "B14",
@@ -1186,7 +1186,7 @@
         "K04"
       ],
       "primarySkill": "K02",
-      "navGroup": "B_B"
+      "navGroup": "B_ECOSYSTEM"
     },
     {
       "id": "B15",
@@ -3676,52 +3676,52 @@
       "groups": [
         {
           "id": "A_INTRO",
-          "title": "个人定位与自我介绍",
+          "title": "个人定位与能力概述",
           "ids": [
             "A01"
           ]
         },
         {
-          "id": "A_C",
-          "title": "C端用户增长",
+          "id": "A_GROWTH",
+          "title": "用户增长与渠道拓展",
           "ids": [
-            "A03",
+            "A09",
             "A10",
             "A11",
             "A12",
-            "A13",
+            "A13"
+          ]
+        },
+        {
+          "id": "A_CONVERSION",
+          "title": "用户转化与链路优化",
+          "ids": [
+            "A03",
             "A14"
           ]
         },
         {
-          "id": "A_B",
-          "title": "B端生态与精细化运营",
+          "id": "A_SYSTEM",
+          "title": "分层运营与体系搭建",
           "ids": [
             "A04",
-            "A05",
             "A07"
           ]
         },
         {
-          "id": "A_SALE",
-          "title": "活动营销与成交增长",
+          "id": "A_PROJECT",
+          "title": "项目策划与协同推进",
           "ids": [
-            "A02"
-          ]
-        },
-        {
-          "id": "A_COLLAB",
-          "title": "跨部门协同",
-          "ids": [
+            "A02",
             "A06"
           ]
         },
         {
-          "id": "A_START",
-          "title": "创业经营与商业判断",
+          "id": "A_DECISION",
+          "title": "经营决策与效果复盘",
           "ids": [
-            "A08",
-            "A09"
+            "A05",
+            "A08"
           ]
         }
       ]
@@ -3732,51 +3732,47 @@
       "desc": "从方法论理解岗位与增长问题",
       "groups": [
         {
-          "id": "B_C",
-          "title": "C端增长策略与冷启动",
+          "id": "B_STRAT",
+          "title": "增长战略与资源决策",
           "ids": [
             "B01",
             "B05",
-            "B08"
+            "B15",
+            "B16"
           ]
         },
         {
-          "id": "B_SEG",
-          "title": "用户分层与生命周期",
+          "id": "B_INSIGHT",
+          "title": "用户洞察与分层成长",
           "ids": [
             "B02",
-            "B03"
+            "B10",
+            "B12"
           ]
         },
         {
-          "id": "B_ACT",
-          "title": "激励机制与转介绍",
+          "id": "B_RETENTION",
+          "title": "用户留存、激励与裂变",
           "ids": [
+            "B03",
             "B04",
             "B13"
           ]
         },
         {
-          "id": "B_DATA",
-          "title": "数据分析与效果评估",
+          "id": "B_ANALYTICS",
+          "title": "数据分析与转化优化",
           "ids": [
             "B06",
-            "B07"
-          ]
-        },
-        {
-          "id": "B_CONV",
-          "title": "内容与交易转化",
-          "ids": [
+            "B07",
             "B11"
           ]
         },
         {
-          "id": "B_B",
-          "title": "B端生态与商家运营",
+          "id": "B_ECOSYSTEM",
+          "title": "冷启动与生态建设",
           "ids": [
-            "B10",
-            "B12",
+            "B08",
             "B14"
           ]
         },
@@ -3785,14 +3781,6 @@
           "title": "AI用户运营认知",
           "ids": [
             "B09"
-          ]
-        },
-        {
-          "id": "B_STRAT",
-          "title": "增长模型与资源决策",
-          "ids": [
-            "B15",
-            "B16"
           ]
         }
       ]
