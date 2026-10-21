@@ -2,13 +2,15 @@
 
 V10 题库的静态网页版本，使用公开 GitHub 仓库和 GitHub Pages 托管。`questions.json` 是唯一正式内容来源；网页、浏览器草稿和练习记录各自独立。无需数据库或浏览器端第三方运行时依赖，网页内不保存 GitHub 凭据。
 
-公开仓库：[vitalu1107-beep/interview-bank](https://github.com/vitalu1107-beep/interview-bank)，默认分支 `main`。预期固定访问地址：[在线面试题库（首次部署待完成）](https://vitalu1107-beep.github.io/interview-bank/)。验收证据见 [测试记录](docs/verification.md)；后续发布结果以 [Actions](https://github.com/vitalu1107-beep/interview-bank/actions) 中最新 `main` 提交对应的运行及线上数据为准。
+公开仓库：[vitalu1107-beep/interview-bank](https://github.com/vitalu1107-beep/interview-bank)，默认分支 `main`。固定访问地址：[在线面试题库](https://vitalu1107-beep.github.io/interview-bank/)。验收证据见 [测试记录](docs/verification.md)；后续发布结果以 [Actions](https://github.com/vitalu1107-beep/interview-bank/actions) 中最新 `main` 提交对应的运行及线上数据为准。
 
-2026-10-21 当前状态：仓库已创建，用户重新授权后 GitHub 连接已能列出此仓库。首次代码上传、Actions 与线上验收进行中；最新实际结果见测试记录。
+2026-10-21 已上线：首次提交 `de6d323a75226c2107b68e996d449bd0f5032f80` 的 [校验、测试与 Pages 部署均成功](https://github.com/vitalu1107-beep/interview-bank/actions/runs/39535857172)。实际请求线上 JSON 返回 HTTP 200，117 题与 V10 原稿逐字节一致；线上桌面、390px 手机布局和核心交互已实测通过。
 
 2026-10-21，用户最新指示已授权将现有 117 题公开发布到 GitHub 和 Pages，取代此前“仅本人访问”的方案。此前的私有托管说明保留为 [历史记录](docs/privacy-deployment.md)，不再是当前部署要求。题目及正式 JSON 将可被任何人读取；本地草稿和练习备份不随站点发布。
 
 ## 本地使用
+
+主要文件：`index.html` 为页面，`assets/` 为交互与样式，`questions.json` 为正式题库，`scripts/validate.mjs` 与 `tests/core.test.mjs` 为校验及测试，`.github/workflows/deploy.yml` 为自动发布流程。
 
 使用 Node.js 22 或更高版本；不需要 `npm install`。在项目目录执行：
 
@@ -61,7 +63,7 @@ node scripts/validate.mjs questions.json --migration ../interview_bank_v10.json
 
 ## ChatGPT题库更新说明
 
-网页本身不直接写 GitHub。仓库为 `vitalu1107-beep/interview-bank`，默认分支为 `main`，正式数据路径始终为根目录 [`questions.json`](questions.json)。先读取最新数据，再处理明确指定的题号。
+网页本身不直接写 GitHub。仓库为 `vitalu1107-beep/interview-bank`，默认分支为 `main`，正式数据路径始终为根目录 [`questions.json`](questions.json)。先读取最新数据，再处理明确指定的题号。后续 ChatGPT 会话必须具备可写的 GitHub 工具并获得此仓库 `Contents:write` 授权；只读连接不能提交。首次上传或修改工作流还需要 `Workflows:write`，日常改题目不需要修改工作流。
 
 1. 用 `fetch_file` 读取 `questions.json` 的完整最新内容，参数包含 `repository_full_name`、`path: "questions.json"`、`ref: "main"`。保存返回的当前**文件 blob SHA**。
 2. 在最新 JSON 中只修改指定 `id` 的记录，保留其他记录、未知字段、原始 ID 和分类。比较前后对象，确认只有这一条记录变化；展示具体差异，程序化检查 JSON、唯一 ID、完整回答、原始 ID 清单和分类。具备执行环境时运行校验与测试；仅有 GitHub 连接时由仓库 Actions 运行，必须等待通过后再报告成功，无需 Codex 介入。
