@@ -36,3 +36,15 @@
 用户已明确授权公开发布，取代上文尚待公开确认的历史状态。公开仓库 `vitalu1107-beep/interview-bank` 已由用户创建，默认分支 `main`，初始提交为 `a2ab53e7944e1ac274624e00bc64c48066e80f04`，目前仅有初始 README。仓库元数据 `has_pages: true`，尚未据此确认 Pages Source 或题库部署成功。
 
 上传前再次执行 `node --check assets/app.js`、`node --test` 和与原始 JSON 的迁移校验：23/23 测试通过、117 题和全部源文件字节一致。GitHub 原子上传在创建 tree 时返回 403 `Resource not accessible by integration`；仅含 README 的独立 tree 诊断同样返回 403，因此并非仅工作流文件权限问题。当前连接返回的可访问安装、安装账户和授权仓库清单均为空。没有成功写入远端文件、提交或分支；须重新连接 GitHub 并授权此仓库后继续上传、执行 CI、部署及线上验收。
+
+## 2026-10-21 正式上线验收
+
+用户重新授权后，连接已能列出目标仓库，上传成功；此前的权限阻碍已解决。首次代码提交为 `de6d323a75226c2107b68e996d449bd0f5032f80`，[Actions 运行 39535857172](https://github.com/vitalu1107-beep/interview-bank/actions/runs/39535857172) 的 build 与 deploy 均为 success，含校验、全部 23 项测试、Configure Pages、上传产物和 Deploy GitHub Pages。
+
+线上固定网址为 https://vitalu1107-beep.github.io/interview-bank/ 。实际通过 HTTPS 附缓存破除参数、请求禁用缓存头读取线上 `questions.json`：HTTP 200，171198 字节，117 题，SHA-256 为 `aef4c1b2ef6cea314363fe6f420ffccd2d094d891d9451ed7a27331fbebb4304`，与本地及原始 V10 JSON 逐字节一致。仓库同一提交的 JSON 也已读取并核对全文相同、117 个唯一 ID。
+
+在线上页面实际操作：A/B/C/D 数量显示 14/16/10/77；A10 搜索返回题目及相关内容，复制得到 383 字口语稿；收藏和练习标记刷新后保留；保存带临时标识的 A10 本地草稿后刷新，题目立即恢复正式标题，草稿仍保留，未覆盖正式版。隐藏/显示回答通过。临时草稿与本次新建的收藏、练习标记已通过页面清理，正式数据未改动。
+
+线上手机视口 390×844：文档宽度与 scrollWidth 均为 390，主内容宽 370，无水平溢出；测试后已恢复默认视口。页面错误日志为空。线上截图位于 `output/screenshots/live-desktop.jpg`，不进入仓库或站点产物。较复杂的导入导出、并发写入、正式答案变更冲突与新增题目测试沿用上文已完成的隔离测试副本证据，不为测试改写正式答案。
+
+限制：网页草稿、收藏与练习仍仅在当前浏览器保存，跨设备不自动同步；正式内容和仓库公开可读。日常 ChatGPT 更新依赖该会话具备已授权的可写 GitHub 工具；失败时须明确报告，不能只凭连接存在就声称同步成功。
