@@ -1,0 +1,15 @@
+{
+  "name": "interview-bank",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "保留 V10 原题的个人面试练习静态站点",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "validate": "node scripts/validate.mjs",
+    "test": "node --test tests/core.test.mjs",
+    "check": "npm run validate && npm test"
+  }
+}

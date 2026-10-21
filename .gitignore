@@ -1,0 +1,5 @@
+node_modules/
+output/
+test-results/
+.superpowers/
+.DS_Store
