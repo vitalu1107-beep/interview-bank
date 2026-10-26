@@ -1,4 +1,5 @@
 import { validateBank, normalizeBank, fingerprint, createDraft, draftState, prepareImport } from './core.mjs';
+import { SITE_CONFIG, getLearningSummary, getNextPracticeId } from './notebook.mjs';
 
 const $ = selector => document.querySelector(selector);
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -15,6 +16,29 @@ let hiddenSet=new Set(), draftView=new Set(), viewFilter='all', pendingImport=nu
 let editorOpen=false, lastModalFocus=null, editorDirty=false, lastSearch='';
 let unreadLocalState={};
 let confirmationResolve=null;
+const mobileNav = matchMedia('(max-width: 860px)');
+function orderedItems() { return TAX.flatMap(cat=>cat.groups.flatMap(group=>group.ids.map(id=>LOOKUP.get(id)).filter(Boolean))); }
+function applyBranding() {
+  document.title=SITE_CONFIG.name+'｜'+SITE_CONFIG.section;
+  for(const [selector,value] of [['[data-brand-name]',SITE_CONFIG.name],['[data-brand-subtitle]',SITE_CONFIG.subtitle],['[data-section-name]',SITE_CONFIG.section]]) document.querySelectorAll(selector).forEach(el=>el.textContent=value);
+}
+function renderOverview() {
+  const ordered=orderedItems(), summary=getLearningSummary(ordered,progress), next=getNextPracticeId(ordered,progress);
+  for(const [id,value] of [['overviewTotal',summary.total],['overviewPracticed',summary.practiced],['overviewFavorites',summary.favorites]]) {const el=document.getElementById(id);if(el)el.textContent=value;}
+  if($('#overviewProgress')) {$('#overviewProgress').max=100;$('#overviewProgress').value=summary.completion;$('#overviewProgress').setAttribute('aria-label',`练习进度 ${summary.completion}%`);}
+  if($('#continuePractice')) {$('#continuePractice').textContent=next?'继续练习':'重新复习';$('#continuePractice').disabled=!ordered.length;}
+  if($('#continueHint')) $('#continueHint').textContent=next?`下一题 ${next} · ${LOOKUP.get(next).title}`:ordered.length?'这一轮已全部练过，随时可以再复习一次。':'题库暂时没有题目。';
+}
+function setNavigationOpen(open, returnFocus=false) {
+  const body=$('#navBody'), toggle=$('#navToggle');if(!body||!toggle)return;
+  if(!open && (returnFocus||body.contains(document.activeElement))) toggle.focus({preventScroll:true});
+  body.hidden=!open;toggle.setAttribute('aria-expanded',String(open));
+}
+function closeMobileNavigation(returnFocus=false) {if(mobileNav.matches)setNavigationOpen(false,returnFocus);}
+function focusAction(attribute,id) {
+  const button=document.querySelector(`[data-${attribute}="${CSS.escape(id)}"]`);
+  (button||$('#filters [data-filter="'+viewFilter+'"]'))?.focus({preventScroll:true});
+}
 const safeId=id=>/^(?:[ABC]\d{2,}|D\d{2,}-\d{2,})$/.test(id);
 function validProgress(value) {
   return value && ['favorites','practiced'].every(key=>value[key] && typeof value[key]==='object' && !Array.isArray(value[key]))
@@ -126,6 +150,8 @@ function renderSync() {
   const entries=Object.entries(drafts);
   const conflicts=entries.filter(([id,draft])=>draftState(draft,LOOKUP.get(id))==='conflict');
   const orphans=entries.filter(([id])=>!LOOKUP.has(id));
+  if($('#syncSummary')) $('#syncSummary').textContent=`正式内容已读取 · 本地草稿 ${entries.length} 题${conflicts.length?' · 有版本冲突':''}${legacyItems.length?` · 旧版草稿 ${legacyItems.length} 题待迁移`:''}`;
+  const details=$('#syncStatus').closest('details');if(details&&(conflicts.length||orphans.length||legacyItems.length||!canPersist))details.open=true;
   $('#syncStatus').className='sync-panel'+(conflicts.length||orphans.length||!canPersist?' warning':'');
   $('#syncStatus').innerHTML=`<b>正式内容已读取</b> · ${escapeHTML(loadedAt)}<br>数据版本：${escapeHTML(BASE.version)} · ${BASE.items.length}题。<br>本地草稿 ${entries.length} 题，冲突 ${conflicts.length} 题${orphans.length?`，已不在正式库中的草稿 ${orphans.length} 题（仍保留于备份）`:''}。刷新默认显示正式版。${storageMessage?`<p class="storage-error">${escapeHTML(storageMessage)}</p>`:''}${conflicts.length?`<p>正式内容有变化，请逐题对比：${conflicts.map(([id])=>`<button class="smallbtn" data-compare="${id}">${id} 对比版本</button>`).join('')}</p>`:''}${legacyItems.length?`<p>检测到旧版浏览器编辑，尚未应用。<button class="smallbtn" id="legacyImport">预览迁移 ${legacyItems.length} 题旧草稿</button></p>`:''}`;
 }
@@ -136,14 +162,15 @@ function cardHTML(q) {
   const tags=(q.skills||[]).slice(0,4).map(k=>`<span class="tag ${q.primarySkill===k?'main-tag':'cross'}">${escapeHTML(SKILLS[k]?.short)}</span>`).join('');
   const keys=q.kind==='main'?q.deepRefs||[]:(q.related||'').split('/').map(x=>x.trim()).filter(Boolean);
   const links=keys.filter(id=>LOOKUP.has(id));
-  return `<article class="card" id="${q.id}"><div class="chead"><h3><span class="cid">${q.id}</span>${escapeHTML(q.title)}</h3><button class="smallbtn" data-expand="${q.id}" aria-expanded="${opened&&!onlyQuestions}">${opened&&!onlyQuestions?'收起回答':'查看回答'}</button></div><div class="tags"><span class="tag main-tag">${escapeHTML(GROUPS[q.navGroup]?.title||'')}</span>${tags}<span class="tag">${escapeHTML(q.story||'')}</span><span class="tag ${q.state!=='可练'?'warn':''}">${escapeHTML(q.state||'待完善')}</span></div><p class="draft-label ${local?'':'formal'}">${local?'正在查看本地草稿 · 未同步 GitHub':'正在查看正式版'}${draft?` · 有本地草稿（${escapeHTML(draft.updatedAt||'导入时间未知')}）`:''}</p>${state==='conflict'?'<div class="draft-warning">正式内容自这份草稿建立后已变化。草稿尚未覆盖正式版，请先对比版本。</div>':''}<div class="progress-actions"><button class="smallbtn" data-favorite="${q.id}" aria-pressed="${!!progress.favorites[q.id]}">${progress.favorites[q.id]?'★ 已收藏':'☆ 收藏'}</button><button class="smallbtn" data-practice="${q.id}" aria-pressed="${!!progress.practiced[q.id]}">${progress.practiced[q.id]?'✓ 已练习':'标记已练习'}</button></div>${draft?`<div class="draft-tools"><button class="smallbtn" data-compare="${q.id}">对比正式版与草稿</button><button class="smallbtn" data-published="${q.id}">查看正式版</button><button class="smallbtn" data-local="${q.id}">查看本地草稿</button><button class="smallbtn" data-discard="${q.id}">删除这题本地草稿</button></div>`:''}<div class="answer ${onlyQuestions||!opened?'hidden':''}">${q.parts.map(p=>`<div class="part"><div class="part-head ${showTags?'':'hidden'}">【${escapeHTML(p.tag)}】</div><p class="part-text">${escapeHTML(p.text)}</p></div>`).join('')}<details class="detail"><summary>查看答题逻辑／表达提醒／数据口径</summary><div class="detail-block"><b>答题逻辑：</b>${escapeHTML(q.logic||'')}</div><div class="detail-block"><b>表达提醒：</b>${escapeHTML(q.note||'')}</div><div class="detail-block"><b>数据口径：</b>${escapeHTML(q.data||'')}</div></details>${links.length?`<div class="related"><span class="related-label">${deep?'关联主问题':'关联简历深挖'}：</span>${links.map(id=>`<a href="#${id}" class="linkpill" data-goto="${id}">${id}</a>`).join('')}</div>`:''}</div><div class="card-actions"><button class="smallbtn" data-edit="${q.id}">编辑本地草稿</button><button class="smallbtn" data-copy="${q.id}">复制口语稿</button></div><div class="edittarget"></div></article>`;
+  return `<article class="card" id="${q.id}"><div class="chead"><h3 tabindex="-1"><span class="cid">${q.id}</span>${escapeHTML(q.title)}</h3><button class="smallbtn" data-expand="${q.id}" aria-controls="answer-${q.id}" aria-expanded="${opened&&!onlyQuestions}">${opened&&!onlyQuestions?'收起回答':'查看回答'}</button></div><div class="tags"><span class="tag main-tag">${escapeHTML(GROUPS[q.navGroup]?.title||'')}</span>${tags}<span class="tag">${escapeHTML(q.story||'')}</span><span class="tag ${q.state!=='可练'?'warn':''}">${escapeHTML(q.state||'待完善')}</span></div><p class="draft-label ${local?'':'formal'}">${local?'正在查看本地草稿 · 未同步 GitHub':'正在查看正式版'}${draft?` · 有本地草稿（${escapeHTML(draft.updatedAt||'导入时间未知')}）`:''}</p>${state==='conflict'?'<div class="draft-warning">正式内容自这份草稿建立后已变化。草稿尚未覆盖正式版，请先对比版本。</div>':''}<div class="progress-actions"><button class="smallbtn" data-favorite="${q.id}" aria-pressed="${!!progress.favorites[q.id]}">${progress.favorites[q.id]?'★ 已收藏':'☆ 收藏'}</button><button class="smallbtn" data-practice="${q.id}" aria-pressed="${!!progress.practiced[q.id]}">${progress.practiced[q.id]?'✓ 已练习':'标记已练习'}</button></div>${draft?`<div class="draft-tools"><button class="smallbtn" data-compare="${q.id}">对比正式版与草稿</button><button class="smallbtn" data-published="${q.id}">查看正式版</button><button class="smallbtn" data-local="${q.id}">查看本地草稿</button><button class="smallbtn" data-discard="${q.id}">删除这题本地草稿</button></div>`:''}<div id="answer-${q.id}" class="answer ${onlyQuestions||!opened?'hidden':''}">${q.parts.map((p,i)=>`<div class="part ${/^(?:Part\b|版本)/i.test(p.tag.trim())?'version-part':''}"><div class="part-head ${showTags?'':'hidden'}"><span class="part-number">${String(i+1).padStart(2,'0')}</span><span class="part-title">${escapeHTML(p.tag)}</span></div><p class="part-text">${escapeHTML(p.text)}</p></div>`).join('')}<details class="detail"><summary>查看答题逻辑／表达提醒／数据口径</summary><div class="detail-block"><b>答题逻辑：</b>${escapeHTML(q.logic||'')}</div><div class="detail-block"><b>表达提醒：</b>${escapeHTML(q.note||'')}</div><div class="detail-block"><b>数据口径：</b>${escapeHTML(q.data||'')}</div></details>${links.length?`<div class="related"><span class="related-label">${deep?'关联主问题':'关联简历深挖'}：</span>${links.map(id=>`<a href="#${id}" class="linkpill" data-goto="${id}">${id}</a>`).join('')}</div>`:''}</div><div class="card-actions"><button class="smallbtn" data-edit="${q.id}">编辑本地草稿</button><button class="smallbtn" data-copy="${q.id}">复制口语稿</button></div><div class="edittarget"></div></article>`;
 }
 
 function render() {
   const term=$('#search').value.trim(), visible=selection(), c=CATS[selectedCat], g=GROUPS[selectedGroup];
   const global=!!term||viewFilter!=='all';
   const filterNames={all:'全部题目',favorites:'我的收藏',practiced:'已练习',drafts:'本地草稿'};
-  renderNav(); renderSync();
+  renderNav(); renderSync(); renderOverview();
+  if($('#mobileCurrentGroup')) $('#mobileCurrentGroup').textContent=global?'全部题库':g?.title||c.title;
   $('#headnum').textContent=`${BASE.items.filter(q=>q.kind==='main').length} 主问题 · ${BASE.items.filter(q=>q.kind==='deep').length} 追问 · 共${BASE.items.length}题`;
   $('#crumb').textContent=global?'全部题库 / '+(term?'搜索结果':filterNames[viewFilter]):`${selectedCat}｜${c.title}${g?' / '+g.title:''}`;
   $('#currentTitle').textContent=term?'搜索：'+term:global?filterNames[viewFilter]:g?.title||c.title;
@@ -193,9 +220,9 @@ async function saveEditor(id) {
 function backup() {
   return {...clone(BASE),localState:{formatVersion:1,exportedAt:new Date().toISOString(),drafts:clone(drafts),progress:clone(progress),...(Object.keys(unreadLocalState).length?{unreadLocalState}:{}),unsavedEditors:[...document.querySelectorAll('.editor')].map(editor=>({id:editor.closest('.card').id,fields:[...editor.querySelectorAll('input,textarea,select')].map(field=>({name:field.name,value:field.value,...(field.type==='checkbox'?{checked:field.checked}:{})}))}))}};
 }
-function exportBackup() { download(JSON.stringify(backup(),null,2),'面试题库_正式内容与本地备份.json','application/json;charset=utf-8'); }
+function exportBackup() { download(JSON.stringify(backup(),null,2),SITE_CONFIG.name+'_正式内容与本地备份.json','application/json;charset=utf-8'); }
 function mdExport() {
-  const lines=['# 我的面试题库','','> 正式内容与当前明确选择查看的本地草稿。草稿未同步 GitHub。',''];
+  const lines=['# '+SITE_CONFIG.name+' · '+SITE_CONFIG.section,'','> 正式内容与当前明确选择查看的本地草稿。草稿未同步 GitHub。',''];
   for(const cat of TAX) for(const group of cat.groups) {
     lines.push(`## ${cat.id}｜${cat.title} / ${group.title}`,'');
     for(const id of group.ids) {
@@ -207,8 +234,8 @@ function mdExport() {
   return lines.join('\n');
 }
 
-function openModal(id) { lastModalFocus=document.activeElement;$(id).classList.remove('hidden');$(id).querySelector('button,input,textarea')?.focus(); }
-function closeModal(id) { $(id).classList.add('hidden');lastModalFocus?.focus(); }
+function openModal(id) { lastModalFocus=document.activeElement;if($('#appShell'))$('#appShell').inert=true;$(id).classList.remove('hidden');$(id).querySelector('button,input,textarea')?.focus(); }
+function closeModal(id) { $(id).classList.add('hidden');if($('#appShell'))$('#appShell').inert=false;lastModalFocus?.focus(); }
 function askConfirm(message) {
   $('#confirmMessage').textContent=message;openModal('#confirmback');
   $('#confirmCancel').focus();
@@ -276,6 +303,11 @@ async function boot() {
 }
 
 function bindEvents() {
+  setNavigationOpen(!mobileNav.matches);
+  mobileNav.addEventListener('change',()=>setNavigationOpen(!mobileNav.matches));
+  $('#navToggle')?.addEventListener('click',()=>setNavigationOpen($('#navToggle').getAttribute('aria-expanded')!=='true'));
+  $('#continuePractice')?.addEventListener('click',()=>{const ordered=orderedItems(),id=getNextPracticeId(ordered,progress)||ordered[0]?.id;if(id){viewFilter='all';jumpTo(id);}});
+
   $('#search').addEventListener('input',()=>{
     if(editorDirty){$('#search').value=lastSearch;notice('请先保存或取消当前编辑，再搜索其他题目；编辑内容已保留。',true);return;}
     render();
@@ -285,7 +317,7 @@ function bindEvents() {
   // Rendering replaces cards. Keep unsaved input intact until the user saves or cancels.
   document.addEventListener('click',event=>{
     const action=event.target.closest('button,a[data-goto]');
-    if(!editorDirty||!action||action.closest('.editor')||['exportjson','exportmd'].includes(action.id))return;
+    if(!editorDirty||!action||action.closest('.editor')||['exportjson','exportmd','navToggle'].includes(action.id))return;
     if(action.closest('#modalback,#compareback,#confirmback'))return;
     event.preventDefault();event.stopImmediatePropagation();
     notice('当前编辑尚未保存，请先保存为本地草稿或取消编辑；输入内容已保留。',true);
@@ -296,7 +328,7 @@ function bindEvents() {
   $('#expand').addEventListener('click',()=>{selection().forEach(q=>{openSet.add(q.id);hiddenSet.delete(q.id);});onlyQuestions=false;render();});
   $('#collapse').addEventListener('click',()=>{selection().forEach(q=>{openSet.delete(q.id);hiddenSet.add(q.id);});render();});
   $('#exportjson').addEventListener('click',exportBackup);
-  $('#exportmd').addEventListener('click',()=>download(mdExport(),'面试题库_复习稿.md','text/markdown;charset=utf-8'));
+  $('#exportmd').addEventListener('click',()=>download(mdExport(),SITE_CONFIG.name+'_复习稿.md','text/markdown;charset=utf-8'));
   $('#import').addEventListener('click',openImport);
   $('#closeModal').addEventListener('click',()=>closeModal('#modalback'));
   $('#importApply').addEventListener('click',doImport);
@@ -327,8 +359,8 @@ function bindEvents() {
     }
   });
   window.addEventListener('storage',event=>{
-    if(event.key===DRAFT_KEY) notice('另一标签页已修改本地草稿。为避免覆盖，请先备份当前编辑，再刷新。',true);
-    if(event.key===PROGRESS_KEY) {try{const next=JSON.parse(event.newValue);if(validProgress(next)) progress=next;}catch{}}
+    if(event.key===DRAFT_KEY) {notice('另一标签页已修改本地草稿。为避免覆盖，请先备份当前编辑，再刷新。',true);const details=$('#syncStatus').closest('details');if(details)details.open=true;}
+    if(event.key===PROGRESS_KEY) {try{const next=JSON.parse(event.newValue);if(validProgress(next)) {progress=next;renderOverview();}}catch{}}
   });
   window.addEventListener('beforeunload',event=>{if(editorDirty){event.preventDefault();event.returnValue='';}});
   document.addEventListener('click',async event=>{
@@ -339,7 +371,7 @@ function bindEvents() {
     if(d.cat){viewFilter='all';selectCat(d.cat);return;}
     if(d.group){viewFilter='all';selectGroup(d.group);return;}
     if(d.goto){event.preventDefault();viewFilter='all';jumpTo(d.goto);return;}
-    if(d.expand){const q=get(d.expand);if(q.kind==='deep')openSet.has(q.id)?openSet.delete(q.id):openSet.add(q.id);else hiddenSet.has(q.id)?hiddenSet.delete(q.id):hiddenSet.add(q.id);onlyQuestions=false;render();return;}
+    if(d.expand){const q=get(d.expand);if(q.kind==='deep')openSet.has(q.id)?openSet.delete(q.id):openSet.add(q.id);else hiddenSet.has(q.id)?hiddenSet.delete(q.id):hiddenSet.add(q.id);onlyQuestions=false;render();focusAction('expand',q.id);return;}
     if(d.edit){document.querySelectorAll('.card:not(#'+CSS.escape(d.edit)+') .edittarget').forEach(host=>host.innerHTML='');editor(d.edit);editorOpen=!!document.querySelector('.editor');return;}
     if(d.cancel){document.querySelector('#'+CSS.escape(d.cancel)+' .edittarget').innerHTML='';editorOpen=!!document.querySelector('.editor');editorDirty=false;return;}
     if(d.save){await saveEditor(d.save);return;}
@@ -347,14 +379,17 @@ function bindEvents() {
     if(d.published){draftView.delete(d.published);render();return;}
     if(d.local){if(draftState(drafts[d.local],LOOKUP.get(d.local))==='conflict')compare(d.local);else{draftView.add(d.local);render();}return;}
     if(d.discard){if(await askConfirm('删除 '+d.discard+' 的本地草稿？正式内容保持不变，请先导出备份。')){const next={...drafts};delete next[d.discard];if(await persistDrafts(next)){draftView.delete(d.discard);render();notice('这题的本地草稿已删除，正在查看正式版。');}}return;}
-    if(d.favorite||d.practice){const id=d.favorite||d.practice,kind=d.favorite?'favorites':'practiced';await persistProgress(current=>{if(current[kind][id])delete current[kind][id];else current[kind][id]=d.favorite?true:new Date().toISOString();});render();return;}
+    if(d.favorite||d.practice){const id=d.favorite||d.practice,kind=d.favorite?'favorites':'practiced';await persistProgress(current=>{if(current[kind][id])delete current[kind][id];else current[kind][id]=d.favorite?true:new Date().toISOString();});render();focusAction(d.favorite?'favorite':'practice',id);return;}
     if(d.copy){try{await navigator.clipboard.writeText(get(d.copy).parts.map(p=>p.text).join('\n\n'));button.textContent='已复制';}catch(error){notice('复制失败，请选中回答文字手动复制。',true);}}
   });
 }
 
 // V10 navigation and editor markup are retained below; answer data lives only in JSON.
 
+applyBranding();
 boot().catch(error=>{
+  if($('#syncSummary'))$('#syncSummary').textContent='正式内容读取失败，请展开查看';
+  const details=$('#syncStatus').closest('details');if(details)details.open=true;
   $('#syncStatus').className='sync-panel warning';
   $('#syncStatus').textContent='题库未加载：'+error.message+'。请确认网络后刷新。需通过 HTTP 服务访问，不能直接双击 HTML。';
   $('#currentTitle').textContent='暂时无法读取正式题库';$('#currentDesc').textContent='本地草稿未被用来替代正式内容。';
@@ -372,8 +407,8 @@ function relatedLinks(q){const keys=q.kind==='main'?q.deepRefs||[]:(q.related||'
 
 function scrollTop(){window.scrollTo({top:0,behavior:'smooth'})}
 function selectCat(id){if(!CATS[id])return;if(expandedCat===id){expandedCat=null;expandedGroup=null}else{expandedCat=id;selectedCat=id;selectedGroup=null;expandedGroup=null}$('#search').value='';render();scrollTop()}
-function selectGroup(id){const g=GROUPS[id];if(!g)return;const same=selectedGroup===id;selectedCat=g.category;selectedGroup=id;expandedGroup=same&&expandedGroup===id?null:id;expandedCat=g.category;$('#search').value='';onlyQuestions=false;render();if(!same)scrollTop()}
-function jumpTo(id){const q=get(id);if(!q)return;selectedCat=catOf(q);selectedGroup=q.navGroup;expandedCat=selectedCat;expandedGroup=q.navGroup;$('#search').value='';onlyQuestions=false;if(q.kind==='deep')openSet.add(id);hiddenSet.delete(id);render();requestAnimationFrame(()=>document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'}))}
+function selectGroup(id){const g=GROUPS[id];if(!g)return;const same=selectedGroup===id;selectedCat=g.category;selectedGroup=id;expandedGroup=same&&expandedGroup===id?null:id;expandedCat=g.category;$('#search').value='';onlyQuestions=false;render();closeMobileNavigation(true);if(!same)scrollTop()}
+function jumpTo(id){const q=get(id);if(!q)return;selectedCat=catOf(q);selectedGroup=q.navGroup;expandedCat=selectedCat;expandedGroup=q.navGroup;$('#search').value='';onlyQuestions=false;if(q.kind==='deep')openSet.add(id);hiddenSet.delete(id);render();closeMobileNavigation();requestAnimationFrame(()=>{const card=document.getElementById(id);card?.scrollIntoView({behavior:'smooth',block:'start'});card?.querySelector('h3')?.focus({preventScroll:true});})}
 function editor(id){const q=drafts[id]?{...get(id),...drafts[id].item,navGroup:LOOKUP.get(id).navGroup}:get(id),host=document.querySelector('#'+CSS.escape(id)+' .edittarget');if(!host)return;if(host.innerHTML){host.innerHTML='';return}
  const skillchecks=Object.entries(SKILLS).map(([k,v])=>`<label><input type="checkbox" name="sk-${k}" ${q.skills.includes(k)?'checked':''}>${escapeHTML(v.short)}</label>`).join('');
  const pri=Object.entries(SKILLS).map(([k,v])=>`<option value="${k}" ${q.primarySkill===k?'selected':''}>${escapeHTML(v.name)}</option>`).join('');

@@ -38,7 +38,7 @@ jobs:
           node --input-type=module <<'NODE'
           import { mkdirSync, copyFileSync, writeFileSync } from 'node:fs';
           mkdirSync('_site/assets', { recursive: true });
-          for (const path of ['index.html', 'questions.json', 'assets/app.js', 'assets/core.mjs', 'assets/style.css']) {
+          for (const path of ['index.html', 'questions.json', 'assets/app.js', 'assets/core.mjs', 'assets/notebook.mjs', 'assets/style.css']) {
             copyFileSync(path, `_site/${path}`);
           }
           writeFileSync('_site/.nojekyll', '');
