@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#FFF9EE">
   <meta name="description" content="记录自己的经验与方法，用每一次认真练习，积累下一步的底气。">
   <title>成长手帖</title>
-  <link rel="stylesheet" href="./assets/style.css">
+  <link rel="stylesheet" href="./assets/style.css?v=75a310496c24">
 </head>
 <body>
   <svg class="svg-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -19,11 +19,11 @@
     <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></symbol>
     <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 8V6a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v10H3Z"/></symbol>
   </svg>
-  <a class="skip-link" href="#practice-heading">跳到面试练习</a>
+  <a class="skip-link" href="#practice-heading" data-start-practice>跳到面试练习</a>
   <div id="appShell">
     <header class="site-header">
       <div class="top">
-        <a class="brand" href="#top" aria-label="回到手帖顶部">
+        <a class="brand" href="#top" data-home aria-label="回到手帖首页">
           <svg class="brand-mark" viewBox="0 0 58 58" fill="none" aria-hidden="true">
             <rect x="7" y="6" width="43" height="46" rx="11" fill="#A9CBF5" transform="rotate(-6 7 6)"/>
             <rect x="12" y="8" width="36" height="43" rx="8" fill="#FFFDF7" stroke="#283B58" stroke-width="1.8"/>
@@ -32,13 +32,13 @@
           </svg>
           <span class="brand-copy"><span class="brand-name" data-brand-name>成长手帖</span><span class="brand-subtitle" data-brand-subtitle>正在翻开手帖…</span></span>
         </a>
-        <nav class="site-nav" aria-label="手帖栏目"><a class="section-tab" href="#practice-heading" aria-current="page"><svg class="icon"><use href="#i-book"/></svg><span data-section-name>面试练习</span><span class="tab-dot" aria-hidden="true"></span></a></nav>
+        <nav class="site-nav" aria-label="手帖栏目"><a class="section-tab" href="#practice-heading" data-start-practice aria-current="page"><svg class="icon"><use href="#i-book"/></svg><span data-section-name>面试练习</span><span class="tab-dot" aria-hidden="true"></span></a></nav>
         <span class="header-note"><svg class="icon"><use href="#i-star"/></svg>小小积累，也有回响</span>
       </div>
     </header>
 
     <div class="page-wrap" id="top">
-      <section class="welcome-wrap" aria-labelledby="welcomeTitle">
+      <section class="welcome-wrap" id="welcomePanel" aria-labelledby="welcomeTitle">
         <div class="welcome-copy">
           <span class="eyebrow"><span class="tiny-spark" aria-hidden="true">✦</span> 给正在成长的自己</span>
           <h1 id="welcomeTitle">今天，也向前<span class="underline-word">一点点。</span></h1>
@@ -97,6 +97,6 @@
   <div class="modalback hidden" id="compareback"><section class="modal compare-modal" role="dialog" aria-modal="true" aria-labelledby="compareTitle"><span class="eyebrow small">TWO VERSIONS, SAFELY KEPT</span><h3 id="compareTitle">正式版与本地草稿</h3><p>当前显示正式内容。保留草稿只会影响当前浏览器，不会提交 GitHub。</p><div class="compare-grid" id="compareContent"></div><div class="modal-actions"><button class="action" id="compareClose">关闭对比</button><button class="action" id="compareExport">导出草稿备份</button><button class="action" id="comparePublished">查看正式版（保留草稿）</button><button class="action primary" id="compareKeep">保留草稿并查看</button></div></section></div>
   <div class="modalback hidden" id="confirmback"><section class="modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle"><h3 id="confirmTitle">确认本地草稿操作</h3><p id="confirmMessage"></p><div class="modal-actions"><button class="action" id="confirmCancel">取消，保留草稿</button><button class="action danger" id="confirmApply">确认删除本地草稿</button></div></section></div>
   <noscript><p class="noscript-note">请启用 JavaScript 以加载题库；正式内容保存在 questions.json 中。</p></noscript>
-  <script type="module" src="./assets/app.js"></script>
+  <script type="module" src="./assets/app.js?v=dbe669f26d6d"></script>
 </body>
 </html>

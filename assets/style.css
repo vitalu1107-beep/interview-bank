@@ -125,6 +125,9 @@ progress::-moz-progress-bar { background: #86a6cd; border-radius: 30px; }
 .legacyline { margin: 19px 6px 0; padding-top: 13px; border-top: 1px dashed #dfd9cc; font-size: 12px; line-height: 1.9; color: var(--muted); }
 .legacyline > span { color: #ad945b; margin-right: 4px; }
 .main { min-width: 0; scroll-margin-top: 115px; }
+.question-return { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin: -2px 0 22px; padding-bottom: 17px; border-bottom: 1px dashed var(--line); }
+.question-return .action { min-height: 44px; background: var(--blue-soft); border-color: #d5e2f3; color: var(--blue-strong); font-size: 14px; }
+.question-return > span { font-size: 12px; color: var(--muted); }
 .hero { min-width: 0; padding: 23px 28px 18px; background: var(--paper-warm); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); margin-bottom: 20px; }
 .practice-section { display: flex; justify-content: space-between; gap: 15px; align-items: center; margin-bottom: 17px; }
 .section-label { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; color: #506c94; }
@@ -169,7 +172,7 @@ summary::-webkit-details-marker { display: none; }
 #notice:not(:empty) { background: var(--blue-soft); padding: 10px 13px; border-radius: 10px; margin-top: 13px; }
 #notice.storage-error { color: #994d36; background: #fff0e6; }
 .hero .tipline { font-size: 10px; color: #657087; margin-top: 9px; line-height: 1.9; }
-.card { position: relative; min-width: 0; padding: 27px 30px 24px; margin-bottom: 21px; border: 1px solid #e6e3dc; border-radius: var(--radius-lg); background: #fff; box-shadow: var(--shadow); scroll-margin-top: 118px; }
+.card { position: relative; min-width: 0; padding: 27px 30px 24px; margin-bottom: 21px; border: 1px solid #e6e3dc; border-radius: var(--radius-lg); background: #fff; box-shadow: var(--shadow); scroll-margin-top: 8px; }
 .card::before { content: ""; position: absolute; width: 39px; height: 4px; border-radius: 0 0 5px 5px; background: #c9dcf6; left: 32px; top: 0; }
 .chead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .card h3 { font-size: 20px; font-weight: 650; line-height: 1.7; margin: 0; letter-spacing: 0; overflow-wrap: anywhere; }
@@ -311,7 +314,7 @@ footer { padding: 21px 10px 20px; text-align: center; font-size: 11px; color: #6
   .hero { padding: 22px; }
   .reading-toolbar { justify-content: space-between; }
   .practice-section { margin-bottom: 15px; }
-  .card { scroll-margin-top: 105px; padding: 25px; }
+  .card { scroll-margin-top: 8px; padding: 25px; }
   .chead > .smallbtn, .card-actions .smallbtn, .progress-actions .smallbtn, .reading-tools .action, .filter-tabs .action { min-height: 44px; }
   .reading-tools .action { font-size: 11px; }
   .backup-tools > summary { min-height: 44px; font-size: 11px; }
@@ -378,7 +381,7 @@ footer { padding: 21px 10px 20px; text-align: center; font-size: 11px; color: #6
   .sync-details > summary { min-height: 33px; font-size: 9px; }
   .note, .sync-panel { font-size: 10px; }
   .hero .tipline { font-size: 9px; line-height: 1.85; margin-top: 5px; }
-  .card { padding: 21px 18px 18px; border-radius: 19px; margin-bottom: 17px; scroll-margin-top: 92px; }
+  .card { padding: 21px 18px 18px; border-radius: 19px; margin-bottom: 17px; scroll-margin-top: 8px; }
   .card::before { left: 23px; width: 30px; height: 3px; }
   .chead { gap: 10px; display: block; }
   .card h3 { font-size: 17px; line-height: 1.8; }

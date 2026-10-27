@@ -16,6 +16,7 @@ let hiddenSet=new Set(), draftView=new Set(), viewFilter='all', pendingImport=nu
 let editorOpen=false, lastModalFocus=null, editorDirty=false, lastSearch='';
 let unreadLocalState={};
 let confirmationResolve=null;
+let questionTrail=[];
 const mobileNav = matchMedia('(max-width: 860px)');
 function orderedItems() { return TAX.flatMap(cat=>cat.groups.flatMap(group=>group.ids.map(id=>LOOKUP.get(id)).filter(Boolean))); }
 function applyBranding() {
@@ -139,7 +140,7 @@ function selection() {
   const term=$('#search').value.trim();
   let visible=BASE.items.map(q=>get(q.id));
   if(term) visible=visible.filter(q=>matchText(q,term));
-  else if(viewFilter==='all') visible=selectedGroup?GROUPS[selectedGroup].ids.map(get).filter(Boolean):[];
+  else if(viewFilter==='all') visible=(selectedGroup?GROUPS[selectedGroup].ids:CATS[selectedCat].groups.flatMap(group=>group.ids)).map(get).filter(Boolean);
   if(viewFilter==='favorites') visible=visible.filter(q=>progress.favorites[q.id]);
   if(viewFilter==='practiced') visible=visible.filter(q=>progress.practiced[q.id]);
   if(viewFilter==='drafts') visible=visible.filter(q=>drafts[q.id]);
@@ -162,7 +163,9 @@ function cardHTML(q) {
   const tags=(q.skills||[]).slice(0,4).map(k=>`<span class="tag ${q.primarySkill===k?'main-tag':'cross'}">${escapeHTML(SKILLS[k]?.short)}</span>`).join('');
   const keys=q.kind==='main'?q.deepRefs||[]:(q.related||'').split('/').map(x=>x.trim()).filter(Boolean);
   const links=keys.filter(id=>LOOKUP.has(id));
-  return `<article class="card" id="${q.id}"><div class="chead"><h3 tabindex="-1"><span class="cid">${q.id}</span>${escapeHTML(q.title)}</h3><button class="smallbtn" data-expand="${q.id}" aria-controls="answer-${q.id}" aria-expanded="${opened&&!onlyQuestions}">${opened&&!onlyQuestions?'收起回答':'查看回答'}</button></div><div class="tags"><span class="tag main-tag">${escapeHTML(GROUPS[q.navGroup]?.title||'')}</span>${tags}<span class="tag">${escapeHTML(q.story||'')}</span><span class="tag ${q.state!=='可练'?'warn':''}">${escapeHTML(q.state||'待完善')}</span></div><p class="draft-label ${local?'':'formal'}">${local?'正在查看本地草稿 · 未同步 GitHub':'正在查看正式版'}${draft?` · 有本地草稿（${escapeHTML(draft.updatedAt||'导入时间未知')}）`:''}</p>${state==='conflict'?'<div class="draft-warning">正式内容自这份草稿建立后已变化。草稿尚未覆盖正式版，请先对比版本。</div>':''}<div class="progress-actions"><button class="smallbtn" data-favorite="${q.id}" aria-pressed="${!!progress.favorites[q.id]}">${progress.favorites[q.id]?'★ 已收藏':'☆ 收藏'}</button><button class="smallbtn" data-practice="${q.id}" aria-pressed="${!!progress.practiced[q.id]}">${progress.practiced[q.id]?'✓ 已练习':'标记已练习'}</button></div>${draft?`<div class="draft-tools"><button class="smallbtn" data-compare="${q.id}">对比正式版与草稿</button><button class="smallbtn" data-published="${q.id}">查看正式版</button><button class="smallbtn" data-local="${q.id}">查看本地草稿</button><button class="smallbtn" data-discard="${q.id}">删除这题本地草稿</button></div>`:''}<div id="answer-${q.id}" class="answer ${onlyQuestions||!opened?'hidden':''}">${q.parts.map((p,i)=>`<div class="part ${/^(?:Part\b|版本)/i.test(p.tag.trim())?'version-part':''}"><div class="part-head ${showTags?'':'hidden'}"><span class="part-number">${String(i+1).padStart(2,'0')}</span><span class="part-title">${escapeHTML(p.tag)}</span></div><p class="part-text">${escapeHTML(p.text)}</p></div>`).join('')}<details class="detail"><summary>查看答题逻辑／表达提醒／数据口径</summary><div class="detail-block"><b>答题逻辑：</b>${escapeHTML(q.logic||'')}</div><div class="detail-block"><b>表达提醒：</b>${escapeHTML(q.note||'')}</div><div class="detail-block"><b>数据口径：</b>${escapeHTML(q.data||'')}</div></details>${links.length?`<div class="related"><span class="related-label">${deep?'关联主问题':'关联简历深挖'}：</span>${links.map(id=>`<a href="#${id}" class="linkpill" data-goto="${id}">${id}</a>`).join('')}</div>`:''}</div><div class="card-actions"><button class="smallbtn" data-edit="${q.id}">编辑本地草稿</button><button class="smallbtn" data-copy="${q.id}">复制口语稿</button></div><div class="edittarget"></div></article>`;
+  const back=questionTrail.at(-1);
+  const returnLink=back?.targetId===q.id?`<nav class="question-return" aria-label="关联题导航"><button type="button" class="action" id="returnQuestion">← 返回 ${escapeHTML(back.sourceId)} 原题</button><span>回到刚才阅读的位置</span></nav>`:'';
+  return `<article class="card" id="${q.id}">${returnLink}<div class="chead"><h3 tabindex="-1"><span class="cid">${q.id}</span>${escapeHTML(q.title)}</h3><button class="smallbtn" data-expand="${q.id}" aria-controls="answer-${q.id}" aria-expanded="${opened&&!onlyQuestions}">${opened&&!onlyQuestions?'收起回答':'查看回答'}</button></div><div class="tags"><span class="tag main-tag">${escapeHTML(GROUPS[q.navGroup]?.title||'')}</span>${tags}<span class="tag">${escapeHTML(q.story||'')}</span><span class="tag ${q.state!=='可练'?'warn':''}">${escapeHTML(q.state||'待完善')}</span></div><p class="draft-label ${local?'':'formal'}">${local?'正在查看本地草稿 · 未同步 GitHub':'正在查看正式版'}${draft?` · 有本地草稿（${escapeHTML(draft.updatedAt||'导入时间未知')}）`:''}</p>${state==='conflict'?'<div class="draft-warning">正式内容自这份草稿建立后已变化。草稿尚未覆盖正式版，请先对比版本。</div>':''}<div class="progress-actions"><button class="smallbtn" data-favorite="${q.id}" aria-pressed="${!!progress.favorites[q.id]}">${progress.favorites[q.id]?'★ 已收藏':'☆ 收藏'}</button><button class="smallbtn" data-practice="${q.id}" aria-pressed="${!!progress.practiced[q.id]}">${progress.practiced[q.id]?'✓ 已练习':'标记已练习'}</button></div>${draft?`<div class="draft-tools"><button class="smallbtn" data-compare="${q.id}">对比正式版与草稿</button><button class="smallbtn" data-published="${q.id}">查看正式版</button><button class="smallbtn" data-local="${q.id}">查看本地草稿</button><button class="smallbtn" data-discard="${q.id}">删除这题本地草稿</button></div>`:''}<div id="answer-${q.id}" class="answer ${onlyQuestions||!opened?'hidden':''}">${q.parts.map((p,i)=>`<div class="part ${/^(?:Part\b|版本)/i.test(p.tag.trim())?'version-part':''}"><div class="part-head ${showTags?'':'hidden'}"><span class="part-number">${String(i+1).padStart(2,'0')}</span><span class="part-title">${escapeHTML(p.tag)}</span></div><p class="part-text">${escapeHTML(p.text)}</p></div>`).join('')}<details class="detail"><summary>查看答题逻辑／表达提醒／数据口径</summary><div class="detail-block"><b>答题逻辑：</b>${escapeHTML(q.logic||'')}</div><div class="detail-block"><b>表达提醒：</b>${escapeHTML(q.note||'')}</div><div class="detail-block"><b>数据口径：</b>${escapeHTML(q.data||'')}</div></details>${links.length?`<div class="related"><span class="related-label">${deep?'关联主问题':'关联简历深挖'}：</span>${links.map(id=>`<a href="#${id}" class="linkpill" data-goto="${id}">${id}</a>`).join('')}</div>`:''}</div><div class="card-actions"><button class="smallbtn" data-edit="${q.id}">编辑本地草稿</button><button class="smallbtn" data-copy="${q.id}">复制口语稿</button></div><div class="edittarget"></div></article>`;
 }
 
 function render() {
@@ -192,7 +195,7 @@ function render() {
         if(selected.length) out.push(`<p class="small-rule">${escapeHTML(group.title)} · ${selected.length}题</p>`+selected.map(cardHTML).join(''));
       }
     }
-  } else if(!selectedGroup) out.push('<div class="category-tiles">'+c.groups.map(x=>`<button class="category-tile" data-group="${x.id}"><div class="t-title">${escapeHTML(x.title)}</div><div class="t-meta">${x.ids.length}道题 · 点击进入</div></button>`).join('')+'</div>');
+  } else if(!selectedGroup) out.push(c.groups.map(group=>`<p class="small-rule">${escapeHTML(group.title)} · ${group.ids.length}题</p>`+group.ids.map(get).filter(Boolean).map(cardHTML).join('')).join(''));
   else out.push(visible.map(cardHTML).join(''));
   $('#content').innerHTML=out.join('');
   editorOpen=false;editorDirty=false;lastSearch=term;
@@ -310,13 +313,13 @@ function bindEvents() {
 
   $('#search').addEventListener('input',()=>{
     if(editorDirty){$('#search').value=lastSearch;notice('请先保存或取消当前编辑，再搜索其他题目；编辑内容已保留。',true);return;}
-    render();
+    questionTrail=[];setPracticeMode(true);render();scrollTop();
   });
   document.addEventListener('input',event=>{if(event.target.closest('.editor'))editorDirty=true;});
   document.addEventListener('change',event=>{if(event.target.closest('.editor'))editorDirty=true;});
   // Rendering replaces cards. Keep unsaved input intact until the user saves or cancels.
   document.addEventListener('click',event=>{
-    const action=event.target.closest('button,a[data-goto]');
+    const action=event.target.closest('button,a[data-goto],a[data-home],a[data-start-practice]');
     if(!editorDirty||!action||action.closest('.editor')||['exportjson','exportmd','navToggle'].includes(action.id))return;
     if(action.closest('#modalback,#compareback,#confirmback'))return;
     event.preventDefault();event.stopImmediatePropagation();
@@ -364,13 +367,16 @@ function bindEvents() {
   });
   window.addEventListener('beforeunload',event=>{if(editorDirty){event.preventDefault();event.returnValue='';}});
   document.addEventListener('click',async event=>{
-    const button=event.target.closest('button,a[data-goto]');if(!button) return;
+    const button=event.target.closest('button,a[data-goto],a[data-home],a[data-start-practice]');if(!button) return;
     if(button.id==='legacyImport') {openImport();try{stageImport({items:legacyItems});}catch(error){$('#importPreview').textContent=error.message;}return;}
     const d=button.dataset;
-    if(d.filter){viewFilter=d.filter;$('#search').value='';render();return;}
+    if('home' in d){event.preventDefault();showHome();return;}
+    if('startPractice' in d){event.preventDefault();setPracticeMode(true);closeMobileNavigation();scrollToPracticeStart();return;}
+    if(button.id==='returnQuestion'){returnToQuestion();return;}
+    if(d.filter){questionTrail=[];setPracticeMode(true);viewFilter=d.filter;$('#search').value='';render();scrollTop();return;}
     if(d.cat){viewFilter='all';selectCat(d.cat);return;}
     if(d.group){viewFilter='all';selectGroup(d.group);return;}
-    if(d.goto){event.preventDefault();viewFilter='all';jumpTo(d.goto);return;}
+    if(d.goto){event.preventDefault();jumpTo(d.goto,button);return;}
     if(d.expand){const q=get(d.expand);if(q.kind==='deep')openSet.has(q.id)?openSet.delete(q.id):openSet.add(q.id);else hiddenSet.has(q.id)?hiddenSet.delete(q.id):hiddenSet.add(q.id);onlyQuestions=false;render();focusAction('expand',q.id);return;}
     if(d.edit){document.querySelectorAll('.card:not(#'+CSS.escape(d.edit)+') .edittarget').forEach(host=>host.innerHTML='');editor(d.edit);editorOpen=!!document.querySelector('.editor');return;}
     if(d.cancel){document.querySelector('#'+CSS.escape(d.cancel)+' .edittarget').innerHTML='';editorOpen=!!document.querySelector('.editor');editorDirty=false;return;}
@@ -405,10 +411,54 @@ function renderNav(){let s='';for(const c of TAX){const opened=expandedCat===c.i
 function badges(q){let result=q.skills.slice(0,4).map(k=>`<span class="tag ${q.primarySkill===k?'main-tag':'cross'}">${escapeHTML(SKILLS[k].short)}</span>`).join('');return result}
 function relatedLinks(q){const keys=q.kind==='main'?q.deepRefs||[]:(q.related||'').split('/').map(x=>x.trim()).filter(Boolean);const existing=keys.filter(id=>get(id));if(!existing.length)return'';return `<div class="related"><span class="related-label">${q.kind==='main'?'关联简历深挖':'关联主问题'}：</span>${existing.map(id=>`<a href="#${id}" class="linkpill" data-goto="${id}">${id}</a>`).join('')}</div>`}
 
-function scrollTop(){window.scrollTo({top:0,behavior:'smooth'})}
-function selectCat(id){if(!CATS[id])return;if(expandedCat===id){expandedCat=null;expandedGroup=null}else{expandedCat=id;selectedCat=id;selectedGroup=null;expandedGroup=null}$('#search').value='';render();scrollTop()}
-function selectGroup(id){const g=GROUPS[id];if(!g)return;const same=selectedGroup===id;selectedCat=g.category;selectedGroup=id;expandedGroup=same&&expandedGroup===id?null:id;expandedCat=g.category;$('#search').value='';onlyQuestions=false;render();closeMobileNavigation(true);if(!same)scrollTop()}
-function jumpTo(id){const q=get(id);if(!q)return;selectedCat=catOf(q);selectedGroup=q.navGroup;expandedCat=selectedCat;expandedGroup=q.navGroup;$('#search').value='';onlyQuestions=false;if(q.kind==='deep')openSet.add(id);hiddenSet.delete(id);render();closeMobileNavigation();requestAnimationFrame(()=>{const card=document.getElementById(id);card?.scrollIntoView({behavior:'smooth',block:'start'});card?.querySelector('h3')?.focus({preventScroll:true});})}
+function setPracticeMode(active){const panel=$('#welcomePanel');if(panel)panel.hidden=active;}
+function scrollTop(){window.scrollTo({top:0,behavior:'instant'});}
+function scrollToPracticeStart(){
+  requestAnimationFrame(()=>{const card=$('#content .card');if(!card){scrollTop();return;}card.scrollIntoView({behavior:'instant',block:'start'});card.querySelector('h3')?.focus({preventScroll:true});});
+}
+function showHome(){questionTrail=[];setPracticeMode(false);render();closeMobileNavigation();scrollTop();}
+function selectCat(id){
+  if(!CATS[id])return;
+  questionTrail=[];setPracticeMode(true);viewFilter='all';
+  expandedCat=expandedCat===id?null:id;selectedCat=id;selectedGroup=null;expandedGroup=null;
+  $('#search').value='';onlyQuestions=false;render();closeMobileNavigation(true);scrollToPracticeStart();
+  const sidebar=document.querySelector('.sidebar');if(sidebar)sidebar.scrollTop=0;
+}
+function selectGroup(id){
+  const g=GROUPS[id];if(!g)return;
+  questionTrail=[];setPracticeMode(true);viewFilter='all';
+  const same=selectedGroup===id;selectedCat=g.category;selectedGroup=id;
+  expandedGroup=same&&expandedGroup===id?null:id;expandedCat=g.category;
+  $('#search').value='';onlyQuestions=false;render();closeMobileNavigation(true);scrollToPracticeStart();
+}
+function jumpTo(id,sourceLink=null){
+  const q=get(id);if(!q)return;
+  const sourceId=sourceLink?.closest('.card')?.id;
+  if(LOOKUP.has(sourceId)&&sourceId!==id){
+    questionTrail.push({sourceId,targetId:id,linkTop:sourceLink.getBoundingClientRect().top,
+      selectedCat,selectedGroup,expandedCat,expandedGroup,search:$('#search').value,viewFilter,onlyQuestions,showTags,
+      openSet:[...openSet],hiddenSet:[...hiddenSet],draftView:[...draftView],
+      details:[...document.querySelectorAll('.card details[open]')].map(detail=>detail.closest('.card').id),
+      sidebarTop:document.querySelector('.sidebar')?.scrollTop||0});
+  }else questionTrail=[];
+  setPracticeMode(true);viewFilter='all';selectedCat=catOf(q);selectedGroup=q.navGroup;
+  expandedCat=selectedCat;expandedGroup=q.navGroup;$('#search').value='';onlyQuestions=false;
+  if(q.kind==='deep')openSet.add(id);hiddenSet.delete(id);render();closeMobileNavigation();
+  requestAnimationFrame(()=>{const card=document.getElementById(id);card?.scrollIntoView({behavior:'instant',block:'start'});card?.querySelector('h3')?.focus({preventScroll:true});});
+}
+function returnToQuestion(){
+  const saved=questionTrail.pop();if(!saved)return;
+  ({selectedCat,selectedGroup,expandedCat,expandedGroup,viewFilter,onlyQuestions,showTags}=saved);
+  $('#search').value=saved.search;openSet=new Set(saved.openSet);hiddenSet=new Set(saved.hiddenSet);draftView=new Set(saved.draftView);
+  setPracticeMode(true);render();closeMobileNavigation();
+  saved.details.forEach(id=>{const detail=document.getElementById(id)?.querySelector('.detail');if(detail)detail.open=true;});
+  requestAnimationFrame(()=>{
+    const card=document.getElementById(saved.sourceId),link=card?.querySelector(`[data-goto="${saved.targetId}"]`);
+    if(link){window.scrollTo({top:window.scrollY+link.getBoundingClientRect().top-saved.linkTop,behavior:'instant'});link.focus({preventScroll:true});}
+    else{card?.scrollIntoView({behavior:'instant',block:'start'});card?.querySelector('h3')?.focus({preventScroll:true});}
+    const sidebar=document.querySelector('.sidebar');if(sidebar)sidebar.scrollTop=saved.sidebarTop;
+  });
+}
 function editor(id){const q=drafts[id]?{...get(id),...drafts[id].item,navGroup:LOOKUP.get(id).navGroup}:get(id),host=document.querySelector('#'+CSS.escape(id)+' .edittarget');if(!host)return;if(host.innerHTML){host.innerHTML='';return}
  const skillchecks=Object.entries(SKILLS).map(([k,v])=>`<label><input type="checkbox" name="sk-${k}" ${q.skills.includes(k)?'checked':''}>${escapeHTML(v.short)}</label>`).join('');
  const pri=Object.entries(SKILLS).map(([k,v])=>`<option value="${k}" ${q.primarySkill===k?'selected':''}>${escapeHTML(v.name)}</option>`).join('');

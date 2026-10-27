@@ -8,13 +8,17 @@ V10 题库的静态网页版本，使用公开 GitHub 仓库和 GitHub Pages 托
 
 2026-10-21，用户最新指示已授权将现有 117 题公开发布到 GitHub 和 Pages，取代此前“仅本人访问”的方案。此前的私有托管说明保留为 [历史记录](docs/privacy-deployment.md)，不再是当前部署要求。题目及正式 JSON 将可被任何人读取；本地草稿和练习备份不随站点发布。
 
-## 前端视觉改版（待 PR 审核）
+## 前端与练习导航
 
 品牌名称、副标题和当前栏目集中配置在 `assets/notebook.mjs` 的 `SITE_CONFIG`；改名只需改这里，页面标题、品牌与导出文稿同步使用。现有题库作为“面试练习”，未添加不可用的未来栏目入口。
 
 奶油色纸面与蓝黄文具细节、真实学习概览、继续练习、手机折叠目录及长答案阅读样式详见 [改版截图与验收记录](docs/ui-redesign/README.md)。`questions.json`、`assets/core.mjs`、本地存储 key 和备份结构保持不变。手机/平板目录在 860px 及以下默认收起，搜索始终可见；有旧版草稿、冲突或存储错误时，状态详情会自动展开。
 
-该改版在独立分支提交 PR，审核合并前原 Pages 保持现状。原有工作流只增加新增本地模块的打包条目，发布路径与方式不变。
+视觉改版已通过 [PR #1](https://github.com/vitalu1107-beep/interview-bank/pull/1) 合并。发布路径与方式不变。
+
+选择一级分类会显示该类全部题目，并直接定位第一道题；二级分类缩小练习范围。进入分类、题目、搜索或筛选后，欢迎与概览区域会收起；点击品牌可回到首页。关联题跳转后，目标题卡上方提供“返回 A10 原题”一类按钮，恢复来源筛选、回答展开状态、草稿视图和阅读位置，支持逐级返回。来源记录仅存在于本次页面内存，刷新后清空；收藏、练习和草稿仍使用原有本地存储。此次导航改动的截图及测试见 [导航验收记录](docs/practice-navigation/README.md)。
+
+HTML中的CSS/JS资源附内容版本参数，改动前端文件时同步更新相应参数，避免复用旧缓存；日常修改题库数据不需要修改这些参数。
 
 ## 本地使用
 
@@ -93,7 +97,7 @@ GitHub Contents API 的读取、更新与文件 SHA 机制见 [GitHub 官方文�
 
 在目标仓库的 Settings → Pages 中选择 GitHub Actions。`.github/workflows/deploy.yml` 在 `main` push、PR 和手动运行时执行 `node scripts/validate.mjs` 与 `node --test`。PR 只执行校验和测试；只有 `main` 的非 PR 运行会打包并部署，部署中的运行不会被后续提交取消。
 
-站点产物严格限定为 `index.html`、`questions.json`、`assets/app.js`、`assets/core.mjs`、`assets/style.css` 和生成的 `.nojekyll`。不会复制整个项目，`docs/`、`output/`、测试夹具、原始文件、个人备份及探测资源均不进入站点产物。公开仓库中提交的文件仍然公开，不能把未进入站点产物当作隐私保护。
+站点产物严格限定为 `index.html`、`questions.json`、`assets/app.js`、`assets/core.mjs`、`assets/notebook.mjs`、`assets/style.css` 和生成的 `.nojekyll`。不会复制整个项目，`docs/`、`output/`、测试夹具、原始文件、个人备份及探测资源均不进入站点产物。公开仓库中提交的文件仍然公开，不能把未进入站点产物当作隐私保护。
 
 实际站点地址以成功部署的输出为准，再按上述步骤核对最新提交及线上 JSON。工作流的构建、产物和部署机制见 [GitHub Pages 官方说明](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)。
 
