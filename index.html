@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#FFF9EE">
   <meta name="description" content="记录自己的经验与方法，用每一次认真练习，积累下一步的底气。">
   <title>成长手帖</title>
-  <link rel="stylesheet" href="./assets/style.css?v=75a310496c24">
+  <link rel="stylesheet" href="./assets/style.css?v=8ddd676006a1">
 </head>
 <body>
   <svg class="svg-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -66,10 +66,12 @@
       </section>
 
       <div class="layout">
-        <aside class="sidebar" aria-label="面试练习导航">
-          <div class="sidebar-heading"><div><span class="eyebrow small">MY LEARNING MAP</span><h2 class="aside-title"><svg class="icon"><use href="#i-grid"/></svg>练习目录</h2></div><button class="nav-toggle" id="navToggle" aria-controls="navBody" aria-expanded="false">选择分类<svg class="icon"><use href="#i-chevron"/></svg></button></div>
+        <div id="quickNavPlaceholder" hidden aria-hidden="true"></div>
+        <aside class="sidebar" id="practiceSidebar" aria-label="面试练习导航">
+          <div class="sidebar-heading"><div><span class="eyebrow small">MY LEARNING MAP</span><h2 class="aside-title" id="directoryHeading"><svg class="icon"><use href="#i-grid"/></svg>练习目录</h2></div><button class="nav-toggle" id="navToggle" aria-controls="navBody" aria-expanded="false">选择分类<svg class="icon"><use href="#i-chevron"/></svg></button><button class="action quick-nav-close" id="quickNavClose" type="button" aria-label="关闭目录">关闭 ×</button></div>
           <p class="mobile-selection" id="mobileCurrentGroup">选择一个能力小类</p>
-          <label class="search-field" for="search"><svg class="icon"><use href="#i-search"/></svg><input class="search" id="search" type="search" placeholder="搜索题号、问题、能力…" aria-label="全题库搜索" autocomplete="off"></label>
+          <label class="search-field" for="search"><svg class="icon"><use href="#i-search"/></svg><input class="search" id="search" type="search" placeholder="搜索题号、问题、能力…" aria-label="全题库搜索" autocomplete="off" enterkeyhint="search"></label>
+          <button class="action quick-nav-results" id="quickNavResults" type="button">查看当前题目 →</button>
           <div class="nav-body" id="navBody" hidden><p class="aside-sub">按经历找答案，按能力串起经验。</p><nav id="categoryNav" aria-label="题目分类目录"></nav><p class="legacyline"><span aria-hidden="true">✦</span> 不必一次学完，找到今天想练的那一题就好。</p></div>
         </aside>
 
@@ -77,7 +79,7 @@
           <section class="hero" aria-labelledby="currentTitle">
             <div class="practice-section"><span class="section-label"><svg class="icon"><use href="#i-book"/></svg><span data-section-name>面试练习</span></span><span class="headnum" id="headnum">正在整理题目…</span></div>
             <div class="breadcrumb" id="crumb"></div>
-            <h2 id="currentTitle">翻开今天的练习</h2>
+            <h2 id="currentTitle" tabindex="-1">翻开今天的练习</h2>
             <p id="currentDesc">选一个能力小类，开始整理自己的表达。</p>
             <div class="counts" id="metrics"></div>
             <div class="toolbar filter-tabs" id="filters" aria-label="题目筛选"><button class="action" data-filter="all" aria-pressed="true">全部题目</button><button class="action" data-filter="favorites" aria-pressed="false">我的收藏</button><button class="action" data-filter="practiced" aria-pressed="false">已练习</button><button class="action" data-filter="drafts" aria-pressed="false">本地草稿</button></div>
@@ -93,10 +95,13 @@
     </div>
   </div>
 
+  <button class="quick-nav-open" id="quickNavOpen" type="button" aria-haspopup="dialog" aria-controls="practiceSidebar" aria-expanded="false" hidden><svg class="icon"><use href="#i-grid"/></svg>目录 / 搜索</button>
+  <button class="quick-nav-backdrop" id="quickNavBackdrop" type="button" aria-label="关闭目录" tabindex="-1" hidden></button>
+
   <div class="modalback hidden" id="modalback"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="importTitle"><span class="eyebrow small">KEEP YOUR NOTES</span><h3 id="importTitle">导入本地草稿</h3><p>支持原版 JSON 和本站完整备份。按题号导入为本地草稿；不会改动 GitHub 正式内容。先预览，再确认合并。</p><label for="importfile">选择 JSON 文件</label><input class="fileinput" id="importfile" type="file" accept=".json,application/json"><label for="importarea">或粘贴 JSON 内容</label><textarea id="importarea" placeholder="把原版JSON或完整备份粘贴在这里…"></textarea><div id="importPreview" role="status"></div><div class="modal-actions"><button class="action" id="closeModal">取消</button><button class="action primary" id="importApply">预览导入</button></div></section></div>
   <div class="modalback hidden" id="compareback"><section class="modal compare-modal" role="dialog" aria-modal="true" aria-labelledby="compareTitle"><span class="eyebrow small">TWO VERSIONS, SAFELY KEPT</span><h3 id="compareTitle">正式版与本地草稿</h3><p>当前显示正式内容。保留草稿只会影响当前浏览器，不会提交 GitHub。</p><div class="compare-grid" id="compareContent"></div><div class="modal-actions"><button class="action" id="compareClose">关闭对比</button><button class="action" id="compareExport">导出草稿备份</button><button class="action" id="comparePublished">查看正式版（保留草稿）</button><button class="action primary" id="compareKeep">保留草稿并查看</button></div></section></div>
   <div class="modalback hidden" id="confirmback"><section class="modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle"><h3 id="confirmTitle">确认本地草稿操作</h3><p id="confirmMessage"></p><div class="modal-actions"><button class="action" id="confirmCancel">取消，保留草稿</button><button class="action danger" id="confirmApply">确认删除本地草稿</button></div></section></div>
   <noscript><p class="noscript-note">请启用 JavaScript 以加载题库；正式内容保存在 questions.json 中。</p></noscript>
-  <script type="module" src="./assets/app.js?v=dbe669f26d6d"></script>
+  <script type="module" src="./assets/app.js?v=f1ea1368ba53"></script>
 </body>
 </html>
