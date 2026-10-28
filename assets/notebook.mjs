@@ -4,6 +4,10 @@ export const SITE_CONFIG = Object.freeze({
   subtitle: '记录经验，整理方法，慢慢成长。',
   section: '面试练习',
 });
+export function getExactQuestionId(items, term) {
+  const query = term.trim().toLowerCase();
+  return items.find(item => item.id.toLowerCase() === query)?.id ?? null;
+}
 const practiceTime = value => typeof value === 'string' ? Date.parse(value) : NaN;
 export function getLearningSummary(items, progress = {}) {
   const total = items.length;

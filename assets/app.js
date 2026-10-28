@@ -1,5 +1,5 @@
 import { validateBank, normalizeBank, fingerprint, createDraft, draftState, prepareImport } from './core.mjs';
-import { SITE_CONFIG, getLearningSummary, getNextPracticeId } from './notebook.mjs';
+import { SITE_CONFIG, getLearningSummary, getNextPracticeId, getExactQuestionId } from './notebook.mjs?v=fb00294d0b99';
 
 const $ = selector => document.querySelector(selector);
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -17,6 +17,7 @@ let editorOpen=false, lastModalFocus=null, editorDirty=false, lastSearch='';
 let unreadLocalState={};
 let confirmationResolve=null;
 let questionTrail=[];
+let quickNavigationState=null;
 const mobileNav = matchMedia('(max-width: 860px)');
 function orderedItems() { return TAX.flatMap(cat=>cat.groups.flatMap(group=>group.ids.map(id=>LOOKUP.get(id)).filter(Boolean))); }
 function applyBranding() {
@@ -35,7 +36,40 @@ function setNavigationOpen(open, returnFocus=false) {
   if(!open && (returnFocus||body.contains(document.activeElement))) toggle.focus({preventScroll:true});
   body.hidden=!open;toggle.setAttribute('aria-expanded',String(open));
 }
-function closeMobileNavigation(returnFocus=false) {if(mobileNav.matches)setNavigationOpen(false,returnFocus);}
+function openQuickNavigation() {
+  if(!mobileNav.matches||quickNavigationState)return;
+  const sidebar=$('#practiceSidebar'),placeholder=$('#quickNavPlaceholder');
+  if(!sidebar||!placeholder)return;
+  const background=[$('.site-header'),$('#welcomePanel'),$('#practice-heading'),$('#quickNavOpen')].filter(Boolean);
+  quickNavigationState={focus:document.activeElement,scrollY:window.scrollY,overflow:document.body.style.overflow,
+    navOpen:!$('#navBody').hidden,background:background.map(el=>[el,el.inert]),resultsChanged:false};
+  placeholder.style.height=sidebar.getBoundingClientRect().height+'px';placeholder.hidden=false;
+  sidebar.classList.add('quick-nav-open');sidebar.setAttribute('role','dialog');sidebar.setAttribute('aria-modal','true');sidebar.setAttribute('aria-labelledby','directoryHeading');
+  $('#quickNavBackdrop').hidden=false;$('#quickNavOpen').setAttribute('aria-expanded','true');
+  document.body.style.overflow='hidden';background.forEach(el=>el.inert=true);
+  setNavigationOpen(true);$('#search').focus({preventScroll:true});
+}
+function closeQuickNavigation(restore=true) {
+  const saved=quickNavigationState;if(!saved)return;
+  quickNavigationState=null;
+  const sidebar=$('#practiceSidebar');
+  sidebar.classList.remove('quick-nav-open');['role','aria-modal','aria-labelledby'].forEach(name=>sidebar.removeAttribute(name));
+  $('#quickNavBackdrop').hidden=true;$('#quickNavPlaceholder').hidden=true;$('#quickNavOpen').setAttribute('aria-expanded','false');
+  document.body.style.overflow=saved.overflow;saved.background.forEach(([el,inert])=>el.inert=inert);
+  setNavigationOpen(saved.navOpen);
+  if(restore) {
+    if(saved.resultsChanged)scrollToPracticeStart();
+    else{window.scrollTo({top:saved.scrollY,behavior:'instant'});saved.focus?.focus({preventScroll:true});}
+  }
+}
+function closeMobileNavigation(returnFocus=false) {if(mobileNav.matches){closeQuickNavigation(false);setNavigationOpen(false,returnFocus);}}
+function showSearchResults() {
+  closeMobileNavigation();
+  const exact=getExactQuestionId(BASE.items,$('#search').value);
+  const card=exact&&selection().some(q=>q.id===exact)?document.getElementById(exact):null;
+  if(card){card.scrollIntoView({behavior:'instant',block:'start'});card.querySelector('h3')?.focus({preventScroll:true});}
+  else scrollToPracticeStart();
+}
 function focusAction(attribute,id) {
   const button=document.querySelector(`[data-${attribute}="${CSS.escape(id)}"]`);
   (button||$('#filters [data-filter="'+viewFilter+'"]'))?.focus({preventScroll:true});
@@ -138,8 +172,9 @@ function matchText(q,term) {
 }
 function selection() {
   const term=$('#search').value.trim();
+  const exact=getExactQuestionId(BASE.items,term);
   let visible=BASE.items.map(q=>get(q.id));
-  if(term) visible=visible.filter(q=>matchText(q,term));
+  if(term) visible=visible.filter(q=>exact?q.id===exact:matchText(q,term));
   else if(viewFilter==='all') visible=(selectedGroup?GROUPS[selectedGroup].ids:CATS[selectedCat].groups.flatMap(group=>group.ids)).map(get).filter(Boolean);
   if(viewFilter==='favorites') visible=visible.filter(q=>progress.favorites[q.id]);
   if(viewFilter==='practiced') visible=visible.filter(q=>progress.practiced[q.id]);
@@ -177,7 +212,9 @@ function render() {
   $('#headnum').textContent=`${BASE.items.filter(q=>q.kind==='main').length} 主问题 · ${BASE.items.filter(q=>q.kind==='deep').length} 追问 · 共${BASE.items.length}题`;
   $('#crumb').textContent=global?'全部题库 / '+(term?'搜索结果':filterNames[viewFilter]):`${selectedCat}｜${c.title}${g?' / '+g.title:''}`;
   $('#currentTitle').textContent=term?'搜索：'+term:global?filterNames[viewFilter]:g?.title||c.title;
-  $('#currentDesc').textContent=global?`在全部 ${BASE.items.length} 题中筛选，当前显示 ${visible.length} 题。`:c.desc;
+  const exact=getExactQuestionId(BASE.items,term);
+  $('#currentDesc').textContent=exact?`已按题号精确匹配 ${exact}。${visible.length?'按 Enter 可定位本题。':'本题不在当前筛选中，可切换「全部题目」后重试。'}`:global?`在全部 ${BASE.items.length} 题中筛选，当前显示 ${visible.length} 题。`:c.desc;
+  if($('#quickNavResults'))$('#quickNavResults').textContent=`查看 ${visible.length} 道${term?'搜索结果':'当前题目'} →`;
   $('#metrics').innerHTML=`<span class="metric"><b>${visible.filter(q=>q.kind==='main').length}</b> 道主问题</span><span class="metric"><b>${visible.filter(q=>q.kind==='deep').length}</b> 道深挖追问</span><span class="metric"><b>${BASE.items.length}</b> 道总库存</span>`;
   $('#toggleTags').textContent=showTags?'隐藏结构标签':'显示结构标签';
   $('#toggleAnswers').textContent=onlyQuestions?'显示回答':'只看问题';
@@ -211,13 +248,49 @@ async function saveEditor(id) {
   q.primarySkill=value('primarySkill'); q.skills=Object.keys(SKILLS).filter(k=>el.querySelector(`[name="sk-${k}"]`)?.checked);
   if(!q.skills.includes(q.primarySkill)) q.skills.unshift(q.primarySkill);
   q.kind=LOOKUP.get(id).kind;q.navGroup=LOOKUP.get(id).navGroup;
+  const fieldErrors=editorFieldErrors(q);
+  if(fieldErrors.length){showEditorFeedback(el,'草稿尚未保存，请补全标出的必填内容。',fieldErrors);return;}
   const check=validateBank({...BASE,items:BASE.items.map(item=>item.id===id?q:item)});
-  if(check.errors.length) {notice('草稿未保存：'+check.errors.join('；'),true);return;}
+  if(check.errors.length) {showEditorFeedback(el,'草稿尚未保存：内容或能力标签不符合题库格式，请检查后重试。');return;}
   const draft=createDraft(q,LOOKUP.get(id));
   if(drafts[id] && draftState(drafts[id],LOOKUP.get(id))==='conflict') draft.baseFingerprint=drafts[id].baseFingerprint;
-  if(!await persistDrafts({...drafts,[id]:draft})) return;
+  if(!await persistDrafts({...drafts,[id]:draft})) {showEditorFeedback(el,$('#notice').textContent||'草稿尚未保存，请导出备份后重试。');return;}
   draftView.add(id); render(); notice(canPersist?'本地草稿已保存，未同步 GitHub。':storageMessage,!canPersist);
   document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function editorFieldErrors(q) {
+  const errors=[];
+  if(!q.title.trim())errors.push({field:'title',message:'请填写问题标题。'});
+  q.parts.forEach((part,i)=>{
+    if(!part.tag.trim())errors.push({field:'tag'+i,message:`请填写第 ${i+1} 段的标签。`});
+    if(!part.text.trim())errors.push({field:'part'+i,message:`请填写第 ${i+1} 段的回答内容。`});
+  });
+  return errors;
+}
+function clearEditorFieldError(control) {
+  const hint=document.getElementById(control.id+'-error');if(!hint)return;
+  control.removeAttribute('aria-invalid');
+  const descriptions=(control.getAttribute('aria-describedby')||'').split(/\s+/).filter(id=>id&&id!==hint.id);
+  if(descriptions.length)control.setAttribute('aria-describedby',descriptions.join(' '));else control.removeAttribute('aria-describedby');
+  hint.remove();
+}
+function showEditorFeedback(editor,message,errors=null) {
+  if(errors!==null)editor.querySelectorAll('[aria-invalid="true"]').forEach(clearEditorFieldError);
+  const summary=editor.querySelector('.editor-feedback');if(!summary)return;
+  summary.textContent=message;summary.hidden=false;
+  for(const error of errors||[]) {
+    const control=editor.querySelector(`[name="${error.field}"]`);if(!control)continue;
+    const hint=document.createElement('p');hint.className='field-error';hint.id=control.id+'-error';hint.textContent=error.message;
+    control.insertAdjacentElement('afterend',hint);control.setAttribute('aria-invalid','true');
+    control.setAttribute('aria-describedby',((control.getAttribute('aria-describedby')||'')+' '+hint.id).trim());
+  }
+  const target=editor.querySelector('[aria-invalid="true"]')||summary;
+  target.focus({preventScroll:true});target.scrollIntoView({behavior:'instant',block:'center'});
+}
+function warnUnsavedEditor(message) {
+  closeQuickNavigation(false);notice(message,true);
+  const editor=document.querySelector('.editor');if(editor)showEditorFeedback(editor,message);
 }
 
 function backup() {
@@ -307,23 +380,38 @@ async function boot() {
 
 function bindEvents() {
   setNavigationOpen(!mobileNav.matches);
-  mobileNav.addEventListener('change',()=>setNavigationOpen(!mobileNav.matches));
+  mobileNav.addEventListener('change',()=>{closeQuickNavigation();setNavigationOpen(!mobileNav.matches);});
   $('#navToggle')?.addEventListener('click',()=>setNavigationOpen($('#navToggle').getAttribute('aria-expanded')!=='true'));
+  $('#quickNavOpen')?.addEventListener('click',openQuickNavigation);
+  $('#quickNavClose')?.addEventListener('click',()=>closeQuickNavigation());
+  $('#quickNavBackdrop')?.addEventListener('click',()=>closeQuickNavigation());
+  $('#quickNavResults')?.addEventListener('click',showSearchResults);
   $('#continuePractice')?.addEventListener('click',()=>{const ordered=orderedItems(),id=getNextPracticeId(ordered,progress)||ordered[0]?.id;if(id){viewFilter='all';jumpTo(id);}});
 
   $('#search').addEventListener('input',()=>{
-    if(editorDirty){$('#search').value=lastSearch;notice('请先保存或取消当前编辑，再搜索其他题目；编辑内容已保留。',true);return;}
-    questionTrail=[];setPracticeMode(true);render();scrollTop();
+    if(editorDirty){$('#search').value=lastSearch;warnUnsavedEditor('请先保存或取消当前编辑，再搜索其他题目；编辑内容已保留。');return;}
+    questionTrail=[];setPracticeMode(true);render();
+    if(quickNavigationState)quickNavigationState.resultsChanged=true;else scrollTop();
   });
-  document.addEventListener('input',event=>{if(event.target.closest('.editor'))editorDirty=true;});
+  $('#search').addEventListener('keydown',event=>{
+    if(event.key==='Enter'&&!event.isComposing&&!editorDirty&&(quickNavigationState||getExactQuestionId(BASE.items,$('#search').value))){event.preventDefault();showSearchResults();}
+  });
+  document.addEventListener('input',event=>{
+    const editor=event.target.closest('.editor');if(!editor)return;
+    editorDirty=true;
+    if(event.target.getAttribute('aria-invalid')==='true'&&event.target.value.trim()) {
+      clearEditorFieldError(event.target);
+      if(!editor.querySelector('[aria-invalid="true"]'))editor.querySelector('.editor-feedback').hidden=true;
+    }
+  });
   document.addEventListener('change',event=>{if(event.target.closest('.editor'))editorDirty=true;});
   // Rendering replaces cards. Keep unsaved input intact until the user saves or cancels.
   document.addEventListener('click',event=>{
     const action=event.target.closest('button,a[data-goto],a[data-home],a[data-start-practice]');
-    if(!editorDirty||!action||action.closest('.editor')||['exportjson','exportmd','navToggle'].includes(action.id))return;
+    if(!editorDirty||!action||action.closest('.editor')||['exportjson','exportmd','navToggle','quickNavOpen','quickNavClose','quickNavBackdrop'].includes(action.id))return;
     if(action.closest('#modalback,#compareback,#confirmback'))return;
     event.preventDefault();event.stopImmediatePropagation();
-    notice('当前编辑尚未保存，请先保存为本地草稿或取消编辑；输入内容已保留。',true);
+    warnUnsavedEditor('当前编辑尚未保存，请先保存为本地草稿或取消编辑；输入内容已保留。');
   },true);
   $('#toggleTags').addEventListener('click',()=>{showTags=!showTags;render();});
   $('#toggleAnswers').addEventListener('click',()=>{onlyQuestions=!onlyQuestions;render();});
@@ -352,6 +440,15 @@ function bindEvents() {
     draftView.add(id);closeModal('#compareback');render();notice('已保留并显示本地草稿，未同步 GitHub。刷新仍默认查看正式版。');
   });
   document.addEventListener('keydown',event=>{
+    if(quickNavigationState) {
+      if(event.key==='Escape'){event.preventDefault();closeQuickNavigation();}
+      if(event.key==='Tab') {
+        const controls=[...$('#practiceSidebar').querySelectorAll('button,input,textarea,select,a[href]')].filter(el=>!el.disabled&&el.getClientRects().length);
+        if(event.shiftKey&&document.activeElement===controls[0]){event.preventDefault();controls.at(-1)?.focus();}
+        else if(!event.shiftKey&&document.activeElement===controls.at(-1)){event.preventDefault();controls[0]?.focus();}
+      }
+      return;
+    }
     const modal=document.querySelector('.modalback:not(.hidden)');
     if(!modal) return;
     if(event.key==='Escape') {if(modal.id==='confirmback')finishConfirm(false);else closeModal('#'+modal.id);}
@@ -411,10 +508,10 @@ function renderNav(){let s='';for(const c of TAX){const opened=expandedCat===c.i
 function badges(q){let result=q.skills.slice(0,4).map(k=>`<span class="tag ${q.primarySkill===k?'main-tag':'cross'}">${escapeHTML(SKILLS[k].short)}</span>`).join('');return result}
 function relatedLinks(q){const keys=q.kind==='main'?q.deepRefs||[]:(q.related||'').split('/').map(x=>x.trim()).filter(Boolean);const existing=keys.filter(id=>get(id));if(!existing.length)return'';return `<div class="related"><span class="related-label">${q.kind==='main'?'关联简历深挖':'关联主问题'}：</span>${existing.map(id=>`<a href="#${id}" class="linkpill" data-goto="${id}">${id}</a>`).join('')}</div>`}
 
-function setPracticeMode(active){const panel=$('#welcomePanel');if(panel)panel.hidden=active;}
+function setPracticeMode(active){const panel=$('#welcomePanel');if(panel)panel.hidden=active;const quick=$('#quickNavOpen');if(quick)quick.hidden=!active;}
 function scrollTop(){window.scrollTo({top:0,behavior:'instant'});}
 function scrollToPracticeStart(){
-  requestAnimationFrame(()=>{const card=$('#content .card');if(!card){scrollTop();return;}card.scrollIntoView({behavior:'instant',block:'start'});card.querySelector('h3')?.focus({preventScroll:true});});
+  requestAnimationFrame(()=>{const card=$('#content .card');if(!card){scrollTop();$('#currentTitle')?.focus({preventScroll:true});return;}card.scrollIntoView({behavior:'instant',block:'start'});card.querySelector('h3')?.focus({preventScroll:true});});
 }
 function showHome(){questionTrail=[];setPracticeMode(false);render();closeMobileNavigation();scrollTop();}
 function selectCat(id){
@@ -462,7 +559,7 @@ function returnToQuestion(){
 function editor(id){const q=drafts[id]?{...get(id),...drafts[id].item,navGroup:LOOKUP.get(id).navGroup}:get(id),host=document.querySelector('#'+CSS.escape(id)+' .edittarget');if(!host)return;if(host.innerHTML){host.innerHTML='';return}
  const skillchecks=Object.entries(SKILLS).map(([k,v])=>`<label><input type="checkbox" name="sk-${k}" ${q.skills.includes(k)?'checked':''}>${escapeHTML(v.short)}</label>`).join('');
  const pri=Object.entries(SKILLS).map(([k,v])=>`<option value="${k}" ${q.primarySkill===k?'selected':''}>${escapeHTML(v.name)}</option>`).join('');
- host.innerHTML=`<div class="editor"><b>编辑 ${escapeHTML(id)} · 仅保存为本地草稿 · 未同步 GitHub</b><p class="small-rule">所属目录：${escapeHTML(GROUPS[q.navGroup].title)}（正式目录）；能力标签可以修改。当前表单优先读取这题已有本地草稿。</p><label>问题</label><input name="title" value="${escapeHTML(q.title)}">${q.parts.map((p,i)=>`<label>段落 ${i+1} 标签</label><input name="tag${i}" value="${escapeHTML(p.tag)}"><label>段落内容</label><textarea name="part${i}">${escapeHTML(p.text)}</textarea>`).join('')}<label>答题逻辑</label><textarea name="logic">${escapeHTML(q.logic||'')}</textarea><label>表达提醒／待核实问题</label><textarea name="note">${escapeHTML(q.note||'')}</textarea><label>数据口径</label><textarea name="data">${escapeHTML(q.data||'')}</textarea><label>状态</label><input name="state" value="${escapeHTML(q.state||'可练')}"><label>主能力标签</label><select name="primarySkill">${pri}</select><label>其他关联能力标签</label><div class="checks">${skillchecks}</div><div class="editor-actions"><button class="action primary" data-save="${id}">保存本地草稿</button><button class="action" data-cancel="${id}">取消</button></div></div>`;
+ host.innerHTML=`<div class="editor"><b>编辑 ${escapeHTML(id)} · 仅保存为本地草稿 · 未同步 GitHub</b><p class="small-rule">所属目录：${escapeHTML(GROUPS[q.navGroup].title)}（正式目录）；能力标签可以修改。当前表单优先读取这题已有本地草稿。</p><label>问题</label><input name="title" value="${escapeHTML(q.title)}">${q.parts.map((p,i)=>`<label>段落 ${i+1} 标签</label><input name="tag${i}" value="${escapeHTML(p.tag)}"><label>段落内容</label><textarea name="part${i}">${escapeHTML(p.text)}</textarea>`).join('')}<label>答题逻辑</label><textarea name="logic">${escapeHTML(q.logic||'')}</textarea><label>表达提醒／待核实问题</label><textarea name="note">${escapeHTML(q.note||'')}</textarea><label>数据口径</label><textarea name="data">${escapeHTML(q.data||'')}</textarea><label>状态</label><input name="state" value="${escapeHTML(q.state||'可练')}"><label>主能力标签</label><select name="primarySkill">${pri}</select><label>其他关联能力标签</label><div class="checks">${skillchecks}</div><p class="editor-feedback" role="alert" tabindex="-1" hidden></p><div class="editor-actions"><button class="action primary" data-save="${id}">保存本地草稿</button><button class="action" data-cancel="${id}">取消</button></div></div>`;
  host.querySelectorAll('.editor label').forEach((label,i)=>{const control=label.nextElementSibling;if(control?.matches('input,textarea,select')){control.id='edit-'+id+'-'+i;label.htmlFor=control.id;}});host.scrollIntoView({behavior:'smooth',block:'nearest'})}
 
 function download(content,name,type){const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1800)}

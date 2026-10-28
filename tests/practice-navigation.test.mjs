@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { normalizeBank } from '../assets/core.mjs';
+import { getExactQuestionId } from '../assets/notebook.mjs';
 
 const source = await readFile(new URL('../assets/app.js', import.meta.url), 'utf8');
 const bank = JSON.parse(await readFile(new URL('../questions.json', import.meta.url), 'utf8'));
@@ -58,7 +59,7 @@ function harness({ mobile = false } = {}) {
     addEventListener() {},
   };
   const context = vm.createContext({
-    document, window, bank, normalizeBank, console, URL,
+    document, window, bank, normalizeBank, getExactQuestionId, console, URL,
     location: { href: 'https://example.test/interview-bank/', hash: '' },
     history: { replaceState() {}, pushState() {} }, CSS: { escape: value => value },
     matchMedia: () => ({ matches: mobile, addEventListener() {} }),
@@ -120,6 +121,25 @@ test('choosing a primary category enters practice and shows its real questions',
   h.run("selectCat('A')");
   assert.equal(h.run('selectedCat'), 'A', 'collapsing a category keeps its selection');
   assert.equal(h.run('selection().length'), 17);
+});
+
+test('a complete question ID selects only that question, including lowercase deep IDs', () => {
+  const h = harness();
+  for (const [query, id] of [[' A14 ', 'A14'], ['a14', 'A14'], ['d01-19', 'D01-19']]) {
+    h.node('search').value = query;
+    assert.deepEqual(JSON.parse(h.run('JSON.stringify(selection().map(q=>q.id))')), [id]);
+  }
+  h.node('search').value = '裂变';
+  assert.ok(h.run('selection().length') > 1, 'ordinary full-text search still finds related questions');
+});
+
+test('exact ID search keeps the active personal filter instead of silently leaving it', () => {
+  const h = harness();
+  h.node('search').value = 'A14';
+  h.run("viewFilter='favorites'");
+  assert.equal(h.run('selection().length'), 0);
+  h.run('progress.favorites.A14=true');
+  assert.equal(h.run('selection()[0].id'), 'A14');
 });
 
 test('mobile category selection closes the directory while entering practice', () => {
