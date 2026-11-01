@@ -147,7 +147,7 @@ test('mobile category selection closes the directory while entering practice', (
   h.run("setNavigationOpen(true);selectCat('C')");
   assert.equal(h.node('welcomePanel').hidden, true);
   assert.equal(h.node('navBody').hidden, true);
-  assert.equal(h.run('selection().length'), 10);
+  assert.equal(h.run('selection().length'), h.run("BASE.items.filter(q=>q.id.startsWith('C')).length"));
 });
 
 test('category selection brings the first question into the reading viewport', () => {
