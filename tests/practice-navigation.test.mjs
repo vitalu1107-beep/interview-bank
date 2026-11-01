@@ -120,7 +120,7 @@ test('choosing a primary category enters practice and shows its real questions',
   assert.equal(h.run("selection().every(q=>q.id.startsWith('A'))"), true);
   h.run("selectCat('A')");
   assert.equal(h.run('selectedCat'), 'A', 'collapsing a category keeps its selection');
-  assert.equal(h.run('selection().length'), 17);
+  assert.equal(h.run('selection().length'), h.run("BASE.items.filter(q=>q.id.startsWith('A')).length"));
 });
 
 test('a complete question ID selects only that question, including lowercase deep IDs', () => {
