@@ -113,10 +113,10 @@ test('choosing a primary category enters practice and shows its real questions',
   const h = harness();
   h.run("selectCat('B')");
   assert.equal(h.node('welcomePanel').hidden, true, 'the welcome and overview no longer occupy practice space');
-  assert.equal(h.run('selection().length'), 16);
+  assert.equal(h.run('selection().length'), h.run("BASE.items.filter(q=>q.id.startsWith('B')).length"));
   assert.equal(h.run("selection().every(q=>q.id.startsWith('B'))"), true);
   h.run("selectCat('A')");
-  assert.equal(h.run('selection().length'), 17);
+  assert.equal(h.run('selection().length'), h.run("BASE.items.filter(q=>q.id.startsWith('A')).length"));
   assert.equal(h.run("selection().every(q=>q.id.startsWith('A'))"), true);
   h.run("selectCat('A')");
   assert.equal(h.run('selectedCat'), 'A', 'collapsing a category keeps its selection');
